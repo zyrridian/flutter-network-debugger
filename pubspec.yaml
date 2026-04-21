@@ -1,6 +1,6 @@
 name: flutter_network_debugger
 description: "A flutter package to monitor HTTP requests and socket network traffic in debug mode with an interactive UI overlay."
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/zyrridian/flutter-network-debugger
 repository: https://github.com/zyrridian/flutter-network-debugger
 
