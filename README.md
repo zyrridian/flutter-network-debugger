@@ -1,4 +1,4 @@
-# Flutter Network Monitor
+# Flutter Network Debugger
 
 A powerful and easy-to-use Flutter package to monitor HTTP requests and socket network traffic in debug mode.
 

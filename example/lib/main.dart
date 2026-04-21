@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
-      title: 'Flutter Network Monitor Demo',
+      title: 'Flutter Network Debugger Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
