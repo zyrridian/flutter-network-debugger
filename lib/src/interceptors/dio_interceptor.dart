@@ -63,6 +63,18 @@ class FlutterNetworkDebuggerDioInterceptor extends Interceptor {
   }
 
   dynamic _tryParse(dynamic data) {
+    if (data == null) return null;
+    if (data is FormData) {
+      final map = <String, dynamic>{};
+      for (final entry in data.fields) {
+        map[entry.key] = entry.value;
+      }
+      for (final entry in data.files) {
+        map[entry.key] =
+            '[File: ${entry.value.filename ?? 'unknown'}, Size: ${entry.value.length} bytes]';
+      }
+      return map;
+    }
     if (data is String) {
       try {
         return json.decode(data);
