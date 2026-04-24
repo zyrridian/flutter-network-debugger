@@ -24,6 +24,24 @@ class NetworkCall {
     required this.requestTime,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type.toString(),
+      'url': url,
+      'method': method,
+      'requestTime': requestTime.toIso8601String(),
+      'requestHeaders': requestHeaders,
+      'requestBody': requestBody,
+      'statusCode': statusCode,
+      'responseTime': responseTime?.toIso8601String(),
+      'responseHeaders': responseHeaders,
+      'responseBody': responseBody,
+      'error': error?.toString(),
+      'durationMilliseconds': durationMilliseconds,
+    };
+  }
+
   int get durationMilliseconds {
     if (responseTime != null) {
       return responseTime!.difference(requestTime).inMilliseconds;

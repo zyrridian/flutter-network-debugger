@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/network_monitor.dart';
 import '../models/network_call.dart';
 import 'call_details_screen.dart';
@@ -40,7 +42,8 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
         ),
         textSelectionTheme: TextSelectionThemeData(
           cursorColor: isDark ? Colors.white : Colors.black,
-          selectionColor: (isDark ? Colors.white : Colors.black).withOpacity(0.2),
+          selectionColor:
+              (isDark ? Colors.white : Colors.black).withOpacity(0.2),
           selectionHandleColor: isDark ? Colors.white : Colors.black,
         ),
         textButtonTheme: TextButtonThemeData(
@@ -91,7 +94,13 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
               },
             ),
             IconButton(
+              icon: const Icon(Icons.share_outlined, size: 20),
+              tooltip: 'Export All as JSON',
+              onPressed: () => _exportAll(context),
+            ),
+            IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
+              tooltip: 'Clear All',
               onPressed: () => NetworkMonitorCore.instance.clear(),
             )
           ],
@@ -193,6 +202,24 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
           },
         ),
       ),
+    );
+  }
+
+  void _exportAll(BuildContext context) {
+    final calls = NetworkMonitorCore.instance.calls.value;
+    if (calls.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No calls to export')),
+      );
+      return;
+    }
+
+    final jsonList = calls.map((c) => c.toJson()).toList();
+    final jsonString = const JsonEncoder.withIndent('  ').convert(jsonList);
+
+    Clipboard.setData(ClipboardData(text: jsonString));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Session exported to clipboard as JSON')),
     );
   }
 
