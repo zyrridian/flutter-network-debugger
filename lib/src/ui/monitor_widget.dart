@@ -67,46 +67,49 @@ class _FlutterNetworkDebuggerState extends State<FlutterNetworkDebugger> {
               Positioned(
                 left: _offset.dx,
                 top: _offset.dy,
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _offset += details.delta;
-                    });
-                  },
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: FloatingActionButton(
-                      heroTag: 'flutter_network_debugger_fab',
-                      mini: true,
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      elevation: 8,
-                      shape: const CircleBorder(),
-                      onPressed: () async {
-                        FlutterNetworkDebugger.isVisible.value = false;
-                        if (widget.navigatorKey != null) {
-                          await widget.navigatorKey!.currentState?.push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const NetworkMonitorScreen(),
-                            ),
-                          );
-                        } else {
-                          try {
-                            await Navigator.of(context).push(
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: GestureDetector(
+                    onPanUpdate: (details) {
+                      setState(() {
+                        _offset += details.delta;
+                      });
+                    },
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: FloatingActionButton(
+                        heroTag: 'flutter_network_debugger_fab',
+                        mini: true,
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        elevation: 8,
+                        shape: const CircleBorder(),
+                        onPressed: () async {
+                          FlutterNetworkDebugger.isVisible.value = false;
+                          if (widget.navigatorKey != null) {
+                            await widget.navigatorKey!.currentState?.push(
                               MaterialPageRoute(
                                 builder: (context) =>
                                     const NetworkMonitorScreen(),
                               ),
                             );
-                          } catch (e) {
-                            debugPrint(
-                                'FlutterNetworkDebugger Error: Could not find Navigator. Please pass a navigatorKey to FlutterNetworkDebugger and your MaterialApp.');
+                          } else {
+                            try {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const NetworkMonitorScreen(),
+                                ),
+                              );
+                            } catch (e) {
+                              debugPrint(
+                                  'FlutterNetworkDebugger Error: Could not find Navigator. Please pass a navigatorKey to FlutterNetworkDebugger and your MaterialApp.');
+                            }
                           }
-                        }
-                        FlutterNetworkDebugger.isVisible.value = true;
-                      },
-                      child: const Icon(Icons.api, size: 20),
+                          FlutterNetworkDebugger.isVisible.value = true;
+                        },
+                        child: const Icon(Icons.api, size: 20),
+                      ),
                     ),
                   ),
                 ),
