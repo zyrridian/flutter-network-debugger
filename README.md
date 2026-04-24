@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey, // Provide the navigator key here
-      title: 'Network Monitor Demo',
+      title: 'Network Debugger Demo',
       // The builder provides a Navigator context to push the monitor screen
       builder: (context, child) {
         return FlutterNetworkDebugger(

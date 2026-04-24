@@ -1,7 +1,36 @@
 import '../core/network_monitor.dart';
 import '../models/network_call.dart';
 
+/// Monitor for WebSocket and other socket-based connections.
+///
+/// Use [FlutterNetworkSocketMonitor.logSocketEvent] to manually log
+/// WebSocket send/receive events, errors, and connection state changes.
+///
+/// Example:
+///
+/// ```dart
+/// // Log a sent message
+/// FlutterNetworkSocketMonitor.logSocketEvent(
+///   url: 'ws://echo.websocket.org/',
+///   event: 'send',
+///   data: 'Hello Server',
+/// );
+///
+/// // Log a received message
+/// FlutterNetworkSocketMonitor.logSocketEvent(
+///   url: 'ws://echo.websocket.org/',
+///   event: 'receive',
+///   data: 'Echo from Server',
+/// );
+/// ```
 class FlutterNetworkSocketMonitor {
+  /// Logs a WebSocket or socket event.
+  ///
+  /// Parameters:
+  /// * [url] - The WebSocket URL
+  /// * [event] - One of: 'send', 'receive', 'error', or 'close'
+  /// * [data] - The event data (message content, error, etc.)
+  /// * [id] - Optional connection ID; auto-generated if not provided
   static void logSocketEvent({
     required String url,
     required String event,
