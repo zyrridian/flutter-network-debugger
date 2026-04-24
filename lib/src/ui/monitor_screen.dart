@@ -5,7 +5,16 @@ import '../core/network_monitor.dart';
 import '../models/network_call.dart';
 import 'call_details_screen.dart';
 
+/// Screen that displays a list of all captured network calls.
+///
+/// [NetworkMonitorScreen] shows HTTP and WebSocket calls with:
+/// * URL and request method
+/// * Status code and response duration
+/// * Search functionality to filter calls
+/// * Export to JSON capability
+/// * Tap to view detailed call information
 class NetworkMonitorScreen extends StatefulWidget {
+  /// Creates a [NetworkMonitorScreen].
   const NetworkMonitorScreen({super.key});
 
   @override

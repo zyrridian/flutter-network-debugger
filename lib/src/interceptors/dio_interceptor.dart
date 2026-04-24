@@ -3,6 +3,18 @@ import 'package:dio/dio.dart';
 import '../core/network_monitor.dart';
 import '../models/network_call.dart';
 
+/// Dio interceptor for capturing HTTP network calls.
+///
+/// This interceptor should be added to your Dio instance to automatically
+/// capture all HTTP requests and responses:
+///
+/// ```dart
+/// final dio = Dio();
+/// dio.interceptors.add(FlutterNetworkDebuggerDioInterceptor());
+/// ```
+///
+/// The interceptor captures request/response headers, bodies, status codes,
+/// and errors, and reports them to [NetworkMonitorCore].
 class FlutterNetworkDebuggerDioInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {

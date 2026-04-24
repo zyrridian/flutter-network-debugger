@@ -4,9 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/network_call.dart';
 
+/// Detailed view screen for a single network call.
+///
+/// [CallDetailsScreen] displays comprehensive information about a network call
+/// including:
+/// * Overview tab - URL, method, status, duration, and error info
+/// * Request tab - Headers and body payload
+/// * Response tab - Headers and body payload
+/// * Copy as cURL button to export the request
 class CallDetailsScreen extends StatelessWidget {
+  /// The network call to display details for.
   final NetworkCall call;
 
+  /// Creates a [CallDetailsScreen].
+  ///
+  /// The [call] parameter is required.
   const CallDetailsScreen({super.key, required this.call});
 
   @override
