@@ -115,7 +115,7 @@ class CallDetailsScreen extends StatelessWidget {
       children: [
         _buildSectionHeader('Headers', _formatJson(call.requestHeaders)),
         const SizedBox(height: 8),
-        JsonCodeBlock(json: _formatJson(call.requestHeaders)),
+        JsonCodeBlock(data: call.requestHeaders),
         const Divider(height: 32),
         _buildSectionHeader(
           'Body',
@@ -123,7 +123,7 @@ class CallDetailsScreen extends StatelessWidget {
           subtitle: _getContentTypeLabel(call.requestHeaders),
         ),
         const SizedBox(height: 8),
-        JsonCodeBlock(json: _formatJson(call.requestBody)),
+        JsonCodeBlock(data: call.requestBody),
       ],
     );
   }
@@ -137,7 +137,7 @@ class CallDetailsScreen extends StatelessWidget {
       children: [
         ExpandablePreviewSection(
           title: 'Headers',
-          content: _formatJson(call.responseHeaders),
+          data: call.responseHeaders,
           onCopy: (content) => _copyToClipboard(context, content),
         ),
         const Divider(height: 32),
@@ -169,7 +169,7 @@ class CallDetailsScreen extends StatelessWidget {
             ),
           )
         else
-          JsonCodeBlock(json: _formatJson(call.responseBody)),
+          JsonCodeBlock(data: call.responseBody),
       ],
     );
   }
@@ -310,13 +310,13 @@ class CallDetailsScreen extends StatelessWidget {
 
 class ExpandablePreviewSection extends StatefulWidget {
   final String title;
-  final String content;
+  final dynamic data;
   final Function(String) onCopy;
 
   const ExpandablePreviewSection({
     super.key,
     required this.title,
-    required this.content,
+    required this.data,
     required this.onCopy,
   });
 
@@ -330,7 +330,8 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
 
   @override
   Widget build(BuildContext context) {
-    final isLong = widget.content.split('\n').length > 6;
+    final content = _formatJson(widget.data);
+    final isLong = content.split('\n').length > 6;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +357,7 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
                   ),
                 IconButton(
                   icon: const Icon(Icons.copy, size: 20),
-                  onPressed: () => widget.onCopy(widget.content),
+                  onPressed: () => widget.onCopy(content),
                 ),
               ],
             ),
@@ -371,12 +372,12 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
                 alignment: Alignment.topCenter,
                 maxHeight: double.infinity,
                 child: JsonCodeBlock(
-                  json: widget.content,
+                  data: widget.data,
                 ),
               ),
             ),
           ),
-          secondChild: JsonCodeBlock(json: widget.content),
+          secondChild: JsonCodeBlock(data: widget.data),
           crossFadeState: (isLong && !_isExpanded)
               ? CrossFadeState.showFirst
               : CrossFadeState.showSecond,
@@ -385,28 +386,38 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
       ],
     );
   }
+
+  String _formatJson(dynamic data) {
+    if (data == null) return 'No data';
+    try {
+      if (data is String) {
+        final parsed = json.decode(data);
+        return const JsonEncoder.withIndent('  ').convert(parsed);
+      }
+      return const JsonEncoder.withIndent('  ').convert(data);
+    } catch (e) {
+      return data.toString();
+    }
+  }
 }
 
 class JsonCodeBlock extends StatefulWidget {
-  final String json;
+  final dynamic data;
 
-  const JsonCodeBlock({super.key, required this.json});
+  const JsonCodeBlock({super.key, required this.data});
 
   @override
   State<JsonCodeBlock> createState() => _JsonCodeBlockState();
 }
 
 class _JsonCodeBlockState extends State<JsonCodeBlock> {
-  final List<TapGestureRecognizer> _recognizers = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isSearching = false;
+  bool _isTreeView = true;
 
   @override
   void dispose() {
-    for (final recognizer in _recognizers) {
-      recognizer.dispose();
-    }
     _searchController.dispose();
     super.dispose();
   }
@@ -465,32 +476,68 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                   width: 0.5,
                 ),
               ),
-              child: SelectableText.rich(
-                _highlightJson(context, widget.json, isDark),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  height: 1.4,
-                ),
+              child: _isTreeView
+                  ? JsonTreeView(
+                      data: widget.data,
+                      searchQuery: _searchQuery,
+                    )
+                  : SelectableText.rich(
+                      _highlightJson(
+                          context, _formatJson(widget.data), isDark),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                        _isTreeView ? Icons.code : Icons.account_tree_outlined,
+                        size: 16,
+                        color: Colors.grey),
+                    tooltip: _isTreeView ? 'Raw View' : 'Tree View',
+                    onPressed: () {
+                      setState(() {
+                        _isTreeView = !_isTreeView;
+                      });
+                    },
+                  ),
+                  if (!_isSearching)
+                    IconButton(
+                      icon:
+                          const Icon(Icons.search, size: 16, color: Colors.grey),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = true;
+                        });
+                      },
+                    ),
+                ],
               ),
             ),
-            if (!_isSearching)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: IconButton(
-                  icon: const Icon(Icons.search, size: 16, color: Colors.grey),
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = true;
-                    });
-                  },
-                ),
-              ),
           ],
         ),
       ],
     );
+  }
+
+  String _formatJson(dynamic data) {
+    if (data == null) return 'No data';
+    try {
+      if (data is String) {
+        final parsed = json.decode(data);
+        return const JsonEncoder.withIndent('  ').convert(parsed);
+      }
+      return const JsonEncoder.withIndent('  ').convert(data);
+    } catch (e) {
+      return data.toString();
+    }
   }
 
   List<InlineSpan> _applySearchHighlight(String text, TextStyle baseStyle,
@@ -596,7 +643,6 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                 ),
               );
             };
-          _recognizers.add(recognizer);
 
           spans.addAll(_applySearchHighlight(
             stringValue,
@@ -639,5 +685,296 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
     }
 
     return TextSpan(children: spans, style: defaultStyle);
+  }
+}
+
+class JsonTreeView extends StatelessWidget {
+  final dynamic data;
+  final String searchQuery;
+
+  const JsonTreeView({super.key, required this.data, this.searchQuery = ''});
+
+  @override
+  Widget build(BuildContext context) {
+    if (data == null) return const Text('No data');
+
+    dynamic displayData = data;
+    if (displayData is String) {
+      try {
+        displayData = json.decode(displayData);
+      } catch (e) {
+        // Not a JSON string
+      }
+    }
+
+    return JsonNodeView(
+      value: displayData,
+      searchQuery: searchQuery,
+      depth: 0,
+    );
+  }
+}
+
+class JsonNodeView extends StatefulWidget {
+  final String? keyName;
+  final dynamic value;
+  final int depth;
+  final bool isLast;
+  final String searchQuery;
+
+  const JsonNodeView({
+    super.key,
+    this.keyName,
+    required this.value,
+    this.depth = 0,
+    this.isLast = true,
+    this.searchQuery = '',
+  });
+
+  @override
+  State<JsonNodeView> createState() => _JsonNodeViewState();
+}
+
+class _JsonNodeViewState extends State<JsonNodeView> {
+  bool _isExpanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final value = widget.value;
+    final isCollection = value is Map || value is List;
+    final isEmpty = isCollection &&
+        (value is Map ? value.isEmpty : (value as List).isEmpty);
+
+    if (!isCollection || isEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(left: widget.depth * 16.0),
+        child: _buildLeaf(context, isDark),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding:
+                  EdgeInsets.only(left: widget.depth * 16.0, top: 2, bottom: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _isExpanded ? Icons.arrow_drop_down : Icons.arrow_right,
+                    size: 18,
+                    color: Colors.grey,
+                  ),
+                  _buildCollectionHeader(context, isDark),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_isExpanded) ..._buildChildren(context, isDark),
+        if (!_isExpanded)
+          Padding(
+            padding: EdgeInsets.only(left: (widget.depth * 16.0) + 20),
+            child: Text(
+              value is Map ? '{...}' : '[...]',
+              style: const TextStyle(
+                  color: Colors.grey, fontSize: 12, fontFamily: 'monospace'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildLeaf(BuildContext context, bool isDark) {
+    final keyPart = widget.keyName != null
+        ? TextSpan(
+            text: '"${widget.keyName}": ',
+            style: TextStyle(
+                color: isDark ? Colors.lightBlueAccent : Colors.indigo,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontFamily: 'monospace'))
+        : null;
+
+    final valuePart = _getValueSpan(context, widget.value, isDark);
+
+    return SelectableText.rich(
+      TextSpan(children: [
+        if (keyPart != null) keyPart,
+        valuePart,
+        if (!widget.isLast)
+          TextSpan(
+              text: ',',
+              style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  fontSize: 12,
+                  fontFamily: 'monospace')),
+      ]),
+    );
+  }
+
+  Widget _buildCollectionHeader(BuildContext context, bool isDark) {
+    final keyPart = widget.keyName != null
+        ? '"${widget.keyName}": '
+        : '';
+    final bracket = widget.value is Map ? '{' : '[';
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+        children: [
+          if (keyPart.isNotEmpty)
+            TextSpan(
+              text: keyPart,
+              style: TextStyle(
+                  color: isDark ? Colors.lightBlueAccent : Colors.indigo,
+                  fontWeight: FontWeight.bold),
+            ),
+          TextSpan(
+            text: bracket,
+            style:
+                TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildChildren(BuildContext context, bool isDark) {
+    final List<Widget> children = [];
+    if (widget.value is Map) {
+      final Map map = widget.value;
+      final keys = map.keys.toList();
+      for (int i = 0; i < keys.length; i++) {
+        children.add(JsonNodeView(
+          keyName: keys[i].toString(),
+          value: map[keys[i]],
+          depth: widget.depth + 1,
+          isLast: i == keys.length - 1,
+          searchQuery: widget.searchQuery,
+        ));
+      }
+      children.add(Padding(
+        padding: EdgeInsets.only(left: (widget.depth * 16.0) + 18),
+        child: Text('}${widget.isLast ? "" : ","}',
+            style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontSize: 12,
+                fontFamily: 'monospace')),
+      ));
+    } else if (widget.value is List) {
+      final List list = widget.value;
+      for (int i = 0; i < list.length; i++) {
+        children.add(JsonNodeView(
+          value: list[i],
+          depth: widget.depth + 1,
+          isLast: i == list.length - 1,
+          searchQuery: widget.searchQuery,
+        ));
+      }
+      children.add(Padding(
+        padding: EdgeInsets.only(left: (widget.depth * 16.0) + 18),
+        child: Text(']${widget.isLast ? "" : ","}',
+            style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontSize: 12,
+                fontFamily: 'monospace')),
+      ));
+    }
+    return children;
+  }
+
+  InlineSpan _getValueSpan(BuildContext context, dynamic value, bool isDark) {
+    TextStyle style;
+    String text = value.toString();
+
+    if (value is String) {
+      style = const TextStyle(color: Colors.teal);
+      text = '"$value"';
+      
+      // Handle URLs
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        return TextSpan(
+          text: text,
+          style: style.copyWith(
+            color: isDark ? Colors.blue[300] : Colors.blue[700],
+            decoration: TextDecoration.underline,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            fontFamily: 'monospace'
+          ),
+          recognizer: TapGestureRecognizer()..onTap = () {
+            // URL Preview logic (same as in raw view)
+            Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(
+                      title: Text(value, style: const TextStyle(fontSize: 12)),
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                    body: Center(
+                      child: InteractiveViewer(
+                        child: Image.network(
+                          value,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text(
+                                'Failed to load preview.\nThis URL might not be an image.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+          },
+        );
+      }
+    } else if (value is num) {
+      style = const TextStyle(color: Colors.orange);
+    } else if (value is bool || value == null) {
+      style = const TextStyle(color: Colors.redAccent);
+    } else {
+      style = TextStyle(color: isDark ? Colors.white : Colors.black87);
+    }
+
+    final baseStyle = style.copyWith(fontSize: 12, fontFamily: 'monospace');
+    
+    // Apply search highlight
+    if (widget.searchQuery.isNotEmpty && text.toLowerCase().contains(widget.searchQuery)) {
+        final lowerText = text.toLowerCase();
+        int index = lowerText.indexOf(widget.searchQuery);
+        final List<InlineSpan> spans = [];
+        int start = 0;
+        final highlightStyle = baseStyle.copyWith(backgroundColor: Colors.yellow, color: Colors.black);
+
+        while (index != -1) {
+            if (index > start) {
+                spans.add(TextSpan(text: text.substring(start, index), style: baseStyle));
+            }
+            spans.add(TextSpan(text: text.substring(index, index + widget.searchQuery.length), style: highlightStyle));
+            start = index + widget.searchQuery.length;
+            index = lowerText.indexOf(widget.searchQuery, start);
+        }
+        if (start < text.length) {
+            spans.add(TextSpan(text: text.substring(start), style: baseStyle));
+        }
+        return TextSpan(children: spans);
+    }
+
+    return TextSpan(text: text, style: baseStyle);
   }
 }
