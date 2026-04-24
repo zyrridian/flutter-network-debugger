@@ -445,10 +445,11 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isSearching = false;
-  bool _isTreeView = true;
+  bool _isTreeView = false;
   bool _isLoading = true;
 
   @override
+
   void initState() {
     super.initState();
     // Delay rendering of heavy JSON block to allow tab transition animation to finish smoothly
