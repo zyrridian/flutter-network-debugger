@@ -47,11 +47,81 @@ class _MyHomePageState extends State<MyHomePage> {
     dio.interceptors.add(FlutterNetworkDebuggerDioInterceptor());
   }
 
-  void _makeRequest() async {
+  void _makeRequests() async {
+    final options = Options(
+      validateStatus: (status) => true,
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "PostmanRuntime/7.28.4",
+      },
+    );
+
     try {
-      await dio.get('https://jsonplaceholder.typicode.com/posts/1');
+      // GET
+      debugPrint('Making GET request...');
+      await dio.get(
+        'https://jsonplaceholder.typicode.com/posts/1',
+        options: options,
+      );
+
+      // POST
+      debugPrint('Making POST request...');
+      await dio.post(
+        'https://jsonplaceholder.typicode.com/posts',
+        data: {"title": "test", "body": "debug", "userId": 1},
+        options: options,
+      );
+
+      // PUT
+      debugPrint('Making PUT request...');
+      await dio.put(
+        'https://jsonplaceholder.typicode.com/posts/1',
+        data: {
+          "id": 1,
+          "title": "updated",
+          "body": "debug update",
+          "userId": 1
+        },
+        options: options,
+      );
+
+      // PATCH
+      debugPrint('Making PATCH request...');
+      await dio.patch(
+        'https://jsonplaceholder.typicode.com/posts/1',
+        data: {"title": "patched"},
+        options: options,
+      );
+
+      // DELETE
+      debugPrint('Making DELETE request...');
+      await dio.delete(
+        'https://jsonplaceholder.typicode.com/posts/1',
+        options: options,
+      );
+
+      // FORMDATA
+      debugPrint('Making FormData request...');
+      final formData = FormData.fromMap({
+        'name': 'johndoe',
+        'type': 'package_test',
+        'version': '0.0.1',
+        'file': MultipartFile.fromString('test content', filename: 'test.txt'),
+      });
+      await dio.post(
+        'https://jsonplaceholder.typicode.com/posts',
+        data: formData,
+        options: options,
+      );
+
+      // IMAGE PREVIEW TEST
+      debugPrint('Making Image GET request...');
+      await dio.get(
+        'https://dog.ceo/api/breeds/image/random',
+        options: options,
+      );
     } catch (e) {
-      debugPrint(e.toString());
+      debugPrint('Error in _makeRequests: $e');
     }
   }
 
@@ -85,8 +155,8 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             ElevatedButton(
-              onPressed: _makeRequest,
-              child: const Text('Make HTTP Request'),
+              onPressed: _makeRequests,
+              child: const Text('Run Dummy HTTP Requests'),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
