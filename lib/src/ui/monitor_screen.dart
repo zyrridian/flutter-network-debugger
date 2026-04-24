@@ -144,92 +144,30 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                           letterSpacing: 1.0)));
             }
 
-            return ListView.builder(
+            return ListView.separated(
               itemCount: filteredCalls.length,
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                thickness: 0.5,
+                color: isDark ? Colors.white10 : Colors.black12,
+              ),
               itemBuilder: (context, index) {
                 final call = filteredCalls[index];
                 final methodColor = _getMethodColor(call.method);
-                return ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  leading: Container(
-                    width: 60,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: methodColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Center(
-                      child: Text(
-                        call.method.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                  title: Builder(
-                    builder: (context) {
-                      final uri = Uri.tryParse(call.url);
-                      String baseUrl = '';
-                      String endpoint = call.url;
 
-                      if (uri != null && uri.host.isNotEmpty) {
-                        baseUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
-                        endpoint = uri.path;
-                        if (endpoint.isEmpty) endpoint = '/';
-                        if (uri.hasQuery) endpoint += '?${uri.query}';
-                      }
+                final uri = Uri.tryParse(call.url);
+                String baseUrl = '';
+                String endpoint = call.url;
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (baseUrl.isNotEmpty)
-                            Text(
-                              baseUrl,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 10, color: Colors.grey),
-                            ),
-                          Text(
-                            endpoint,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  subtitle: Row(
-                    children: [
-                      Text(
-                        '${call.statusCode ?? 'PENDING'}',
-                        style: TextStyle(
-                          color: _getStatusColor(call),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const Text(' • ', style: TextStyle(color: Colors.grey)),
-                      Text(
-                        call.durationMilliseconds > -1
-                            ? '${call.durationMilliseconds}ms'
-                            : '...',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  trailing: const Icon(Icons.chevron_right,
-                      size: 20, color: Colors.grey),
+                if (uri != null && uri.host.isNotEmpty) {
+                  baseUrl =
+                      '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+                  endpoint = uri.path;
+                  if (endpoint.isEmpty) endpoint = '/';
+                  if (uri.hasQuery) endpoint += '?${uri.query}';
+                }
+
+                return InkWell(
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -237,6 +175,96 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                       ),
                     );
                   },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ROW 1: Method & Base URL
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: methodColor,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      call.method.toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  if (baseUrl.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        baseUrl,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 12, color: Colors.grey),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              // ROW 2: Endpoint & Status/Duration
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      endpoint,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '${call.statusCode ?? 'PENDING'}',
+                                    style: TextStyle(
+                                      color: _getStatusColor(call),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const Text(' • ',
+                                      style: TextStyle(
+                                          color: Colors.grey, fontSize: 13)),
+                                  Text(
+                                    call.durationMilliseconds > -1
+                                        ? '${call.durationMilliseconds}ms'
+                                        : '...',
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.chevron_right,
+                            size: 16, color: Colors.grey),
+                      ],
+                    ),
+                  ),
                 );
               },
             );

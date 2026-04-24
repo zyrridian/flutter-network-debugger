@@ -47,7 +47,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     // final isDark = Theme.of(context).brightness == Brightness.dark;
-    final call = widget.call;
+    // final call = widget.call;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Theme(
@@ -124,7 +124,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         _buildDetailRow('URL', call.url),
-        _buildDetailRow('Method', call.method),
+        _buildDetailRow('Method', _buildMethodBadge(call.method)),
         _buildDetailRow('Status Code', call.statusCode?.toString() ?? 'N/A'),
         _buildDetailRow('Duration',
             '${call.durationMilliseconds > -1 ? call.durationMilliseconds : 'N/A'} ms'),
@@ -133,6 +133,43 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
           _buildDetailRow('Error', call.error.toString(), isError: true),
       ],
     );
+  }
+
+  Widget _buildMethodBadge(String method) {
+    final color = _getMethodColor(method);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        method.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 11,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Color _getMethodColor(String method) {
+    switch (method.toUpperCase()) {
+      case 'GET':
+        return Colors.green[700]!;
+      case 'POST':
+        return Colors.blue[700]!;
+      case 'PUT':
+        return Colors.orange[700]!;
+      case 'PATCH':
+        return Colors.indigo[400]!;
+      case 'DELETE':
+        return Colors.red[700]!;
+      default:
+        return Colors.grey[700]!;
+    }
   }
 
   Widget _buildRequest(BuildContext context) {
@@ -277,7 +314,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
     _copyToClipboard(context, buffer.toString());
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isError = false}) {
+  Widget _buildDetailRow(String label, dynamic value, {bool isError = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -287,10 +324,14 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
               style: const TextStyle(
                   fontWeight: FontWeight.bold, color: Colors.grey)),
           const SizedBox(height: 4),
-          SelectableText(
-            value,
-            style: TextStyle(fontSize: 16, color: isError ? Colors.red : null),
-          ),
+          if (value is Widget)
+            value
+          else
+            SelectableText(
+              value.toString(),
+              style:
+                  TextStyle(fontSize: 15, color: isError ? Colors.red : null),
+            ),
         ],
       ),
     );
@@ -449,7 +490,6 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
   bool _isLoading = true;
 
   @override
-
   void initState() {
     super.initState();
     // Delay rendering of heavy JSON block to allow tab transition animation to finish smoothly
@@ -567,8 +607,8 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                   ),
                   if (!_isSearching)
                     IconButton(
-                      icon:
-                          const Icon(Icons.search, size: 16, color: Colors.grey),
+                      icon: const Icon(Icons.search,
+                          size: 16, color: Colors.grey),
                       onPressed: () {
                         setState(() {
                           _isSearching = true;
@@ -884,9 +924,7 @@ class _JsonNodeViewState extends State<JsonNodeView> {
   }
 
   Widget _buildCollectionHeader(BuildContext context, bool isDark) {
-    final keyPart = widget.keyName != null
-        ? '"${widget.keyName}": '
-        : '';
+    final keyPart = widget.keyName != null ? '"${widget.keyName}": ' : '';
     final bracket = widget.value is Map ? '{' : '[';
 
     return RichText(
@@ -961,21 +999,21 @@ class _JsonNodeViewState extends State<JsonNodeView> {
     if (value is String) {
       style = const TextStyle(color: Colors.teal);
       text = '"$value"';
-      
+
       // Handle URLs
       if (value.startsWith('http://') || value.startsWith('https://')) {
         return TextSpan(
           text: text,
           style: style.copyWith(
-            color: isDark ? Colors.blue[300] : Colors.blue[700],
-            decoration: TextDecoration.underline,
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-            fontFamily: 'monospace'
-          ),
-          recognizer: TapGestureRecognizer()..onTap = () {
-            // URL Preview logic (same as in raw view)
-            Navigator.of(context).push(
+              color: isDark ? Colors.blue[300] : Colors.blue[700],
+              decoration: TextDecoration.underline,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              fontFamily: 'monospace'),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              // URL Preview logic (same as in raw view)
+              Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => Scaffold(
                     appBar: AppBar(
@@ -1004,7 +1042,7 @@ class _JsonNodeViewState extends State<JsonNodeView> {
                   ),
                 ),
               );
-          },
+            },
         );
       }
     } else if (value is num) {
@@ -1016,32 +1054,38 @@ class _JsonNodeViewState extends State<JsonNodeView> {
     }
 
     final baseStyle = style.copyWith(fontSize: 12, fontFamily: 'monospace');
-    
-    // Apply search highlight
-    if (widget.searchQuery.isNotEmpty && text.toLowerCase().contains(widget.searchQuery)) {
-        final lowerText = text.toLowerCase();
-        int index = lowerText.indexOf(widget.searchQuery);
-        final List<InlineSpan> spans = [];
-        int start = 0;
-        final highlightStyle = baseStyle.copyWith(backgroundColor: Colors.yellow, color: Colors.black);
 
-        while (index != -1) {
-            if (index > start) {
-                spans.add(TextSpan(text: text.substring(start, index), style: baseStyle));
-            }
-            spans.add(TextSpan(text: text.substring(index, index + widget.searchQuery.length), style: highlightStyle));
-            start = index + widget.searchQuery.length;
-            index = lowerText.indexOf(widget.searchQuery, start);
+    // Apply search highlight
+    if (widget.searchQuery.isNotEmpty &&
+        text.toLowerCase().contains(widget.searchQuery)) {
+      final lowerText = text.toLowerCase();
+      int index = lowerText.indexOf(widget.searchQuery);
+      final List<InlineSpan> spans = [];
+      int start = 0;
+      final highlightStyle = baseStyle.copyWith(
+          backgroundColor: Colors.yellow, color: Colors.black);
+
+      while (index != -1) {
+        if (index > start) {
+          spans.add(
+              TextSpan(text: text.substring(start, index), style: baseStyle));
         }
-        if (start < text.length) {
-            spans.add(TextSpan(text: text.substring(start), style: baseStyle));
-        }
-        return TextSpan(children: spans);
+        spans.add(TextSpan(
+            text: text.substring(index, index + widget.searchQuery.length),
+            style: highlightStyle));
+        start = index + widget.searchQuery.length;
+        index = lowerText.indexOf(widget.searchQuery, start);
+      }
+      if (start < text.length) {
+        spans.add(TextSpan(text: text.substring(start), style: baseStyle));
+      }
+      return TextSpan(children: spans);
     }
 
     return TextSpan(text: text, style: baseStyle);
   }
 }
+
 class KeepAliveWrapper extends StatefulWidget {
   final Widget child;
   const KeepAliveWrapper({super.key, required this.child});
