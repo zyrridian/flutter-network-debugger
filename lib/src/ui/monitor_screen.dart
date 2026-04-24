@@ -3,8 +3,23 @@ import '../core/network_monitor.dart';
 import '../models/network_call.dart';
 import 'call_details_screen.dart';
 
-class NetworkMonitorScreen extends StatelessWidget {
+class NetworkMonitorScreen extends StatefulWidget {
   const NetworkMonitorScreen({super.key});
+
+  @override
+  State<NetworkMonitorScreen> createState() => _NetworkMonitorScreenState();
+}
+
+class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +38,11 @@ class NetworkMonitorScreen extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
           elevation: 0,
         ),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: isDark ? Colors.white : Colors.black,
+          selectionColor: (isDark ? Colors.white : Colors.black).withOpacity(0.2),
+          selectionHandleColor: isDark ? Colors.white : Colors.black,
+        ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
               foregroundColor: isDark ? Colors.white : Colors.black),
@@ -34,12 +54,42 @@ class NetworkMonitorScreen extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
           foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
           elevation: 0,
-          title: const Text('NETWORK DEBUGGER',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  letterSpacing: 1.2)),
+          title: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: const TextStyle(fontSize: 14),
+                  decoration: const InputDecoration(
+                    hintText: 'SEARCH URL OR STATUS...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
+                )
+              : const Text('NETWORK DEBUGGER',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      letterSpacing: 1.2)),
           actions: [
+            IconButton(
+              icon: Icon(_isSearching ? Icons.close : Icons.search, size: 20),
+              onPressed: () {
+                setState(() {
+                  if (_isSearching) {
+                    _isSearching = false;
+                    _searchController.clear();
+                    _searchQuery = '';
+                  } else {
+                    _isSearching = true;
+                  }
+                });
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
               onPressed: () => NetworkMonitorCore.instance.clear(),
@@ -49,6 +99,15 @@ class NetworkMonitorScreen extends StatelessWidget {
         body: ValueListenableBuilder<List<NetworkCall>>(
           valueListenable: NetworkMonitorCore.instance.calls,
           builder: (context, calls, child) {
+            final filteredCalls = calls.where((call) {
+              final urlMatch = call.url.toLowerCase().contains(_searchQuery);
+              final statusMatch =
+                  call.statusCode?.toString().contains(_searchQuery) ?? false;
+              final methodMatch =
+                  call.method.toLowerCase().contains(_searchQuery);
+              return urlMatch || statusMatch || methodMatch;
+            }).toList();
+
             if (calls.isEmpty) {
               return const Center(
                   child: Text('NO NETWORK CALLS',
@@ -57,10 +116,20 @@ class NetworkMonitorScreen extends StatelessWidget {
                           color: Colors.grey,
                           letterSpacing: 1.0)));
             }
+
+            if (filteredCalls.isEmpty && _searchQuery.isNotEmpty) {
+              return const Center(
+                  child: Text('NO RESULTS FOUND',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                          letterSpacing: 1.0)));
+            }
+
             return ListView.builder(
-              itemCount: calls.length,
+              itemCount: filteredCalls.length,
               itemBuilder: (context, index) {
-                final call = calls[index];
+                final call = filteredCalls[index];
                 final methodColor = _getMethodColor(call.method);
                 return ListTile(
                   contentPadding:
@@ -136,15 +205,13 @@ class NetworkMonitorScreen extends StatelessWidget {
       case 'PUT':
         return Colors.orange[700]!;
       case 'PATCH':
-        return Colors.deepPurple[400]!;
+        return Colors.indigo[400]!;
       case 'DELETE':
         return Colors.red[700]!;
       default:
         return Colors.grey[700]!;
     }
   }
-
-  int min(int a, int b) => a < b ? a : b;
 
   Color _getStatusColor(NetworkCall call) {
     if (call.statusCode == null) {
@@ -157,18 +224,5 @@ class NetworkMonitorScreen extends StatelessWidget {
       return Colors.blue;
     }
     return Colors.red;
-  }
-
-  IconData _getStatusIcon(NetworkCall call) {
-    if (call.statusCode == null) {
-      return Icons.hourglass_empty;
-    }
-    if (call.statusCode! >= 200 && call.statusCode! < 300) {
-      return Icons.check_circle;
-    }
-    if (call.statusCode! >= 300 && call.statusCode! < 400) {
-      return Icons.info;
-    }
-    return Icons.error;
   }
 }
