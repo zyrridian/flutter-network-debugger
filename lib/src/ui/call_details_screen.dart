@@ -12,17 +12,42 @@ import '../models/network_call.dart';
 /// * Request tab - Headers and body payload
 /// * Response tab - Headers and body payload
 /// * Copy as cURL button to export the request
-class CallDetailsScreen extends StatelessWidget {
-  /// The network call to display details for.
+class CallDetailsScreen extends StatefulWidget {
   final NetworkCall call;
 
-  /// Creates a [CallDetailsScreen].
-  ///
-  /// The [call] parameter is required.
   const CallDetailsScreen({super.key, required this.call});
 
   @override
+  State<CallDetailsScreen> createState() => _CallDetailsScreenState();
+}
+
+class _CallDetailsScreenState extends State<CallDetailsScreen> {
+  final Map<String, String> _formattedCache = {};
+
+  String _formatJsonCached(String key, dynamic data) {
+    if (_formattedCache.containsKey(key)) return _formattedCache[key]!;
+    final formatted = _formatJson(data);
+    _formattedCache[key] = formatted;
+    return formatted;
+  }
+
+  String _formatJson(dynamic data) {
+    if (data == null) return 'No data';
+    try {
+      if (data is String) {
+        final parsed = json.decode(data);
+        return const JsonEncoder.withIndent('  ').convert(parsed);
+      }
+      return const JsonEncoder.withIndent('  ').convert(data);
+    } catch (e) {
+      return data.toString();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // final isDark = Theme.of(context).brightness == Brightness.dark;
+    final call = widget.call;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Theme(
@@ -83,9 +108,9 @@ class CallDetailsScreen extends StatelessWidget {
           ),
           body: TabBarView(
             children: [
-              _buildOverview(context),
-              _buildRequest(context),
-              _buildResponse(context),
+              KeepAliveWrapper(child: _buildOverview(context)),
+              KeepAliveWrapper(child: _buildRequest(context)),
+              KeepAliveWrapper(child: _buildResponse(context)),
             ],
           ),
         ),
@@ -94,6 +119,7 @@ class CallDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildOverview(BuildContext context) {
+    final call = widget.call;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -110,68 +136,145 @@ class CallDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildRequest(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildSectionHeader('Headers', _formatJson(call.requestHeaders)),
-        const SizedBox(height: 8),
-        JsonCodeBlock(data: call.requestHeaders),
-        const Divider(height: 32),
-        _buildSectionHeader(
-          'Body',
-          _formatJson(call.requestBody),
-          subtitle: _getContentTypeLabel(call.requestHeaders),
+    final call = widget.call;
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              _buildSectionHeader(
+                  'Headers', _formatJsonCached('req_h', call.requestHeaders)),
+              const SizedBox(height: 8),
+              JsonCodeBlock(data: call.requestHeaders),
+              const Divider(height: 32),
+              _buildSectionHeader(
+                'Body',
+                _formatJsonCached('req_b', call.requestBody),
+                subtitle: _getContentTypeLabel(call.requestHeaders),
+              ),
+              const SizedBox(height: 8),
+              JsonCodeBlock(data: call.requestBody),
+            ]),
+          ),
         ),
-        const SizedBox(height: 8),
-        JsonCodeBlock(data: call.requestBody),
       ],
     );
   }
 
   Widget _buildResponse(BuildContext context) {
+    final call = widget.call;
     final contentType = _getContentTypeLabel(call.responseHeaders);
     final isImage = contentType == 'IMAGE';
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        ExpandablePreviewSection(
-          title: 'Headers',
-          data: call.responseHeaders,
-          onCopy: (content) => _copyToClipboard(context, content),
-        ),
-        const Divider(height: 32),
-        _buildSectionHeader(
-          'Body',
-          isImage ? call.url : _formatJson(call.responseBody),
-          subtitle: contentType,
-        ),
-        const SizedBox(height: 8),
-        if (isImage)
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image.network(
-                call.url,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(
-                    child: Text('Failed to load image preview',
-                        style: TextStyle(color: Colors.grey)),
-                  ),
-                ),
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              ExpandablePreviewSection(
+                title: 'Headers',
+                data: call.responseHeaders,
+                onCopy: (content) => _copyToClipboard(context, content),
               ),
-            ),
-          )
-        else
-          JsonCodeBlock(data: call.responseBody),
+              const Divider(height: 32),
+              _buildSectionHeader(
+                'Body',
+                isImage
+                    ? call.url
+                    : _formatJsonCached('res_b', call.responseBody),
+                subtitle: contentType,
+              ),
+              const SizedBox(height: 8),
+              if (isImage)
+                Container(
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.network(
+                      call.url,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(
+                          child: Text('Failed to load image preview',
+                              style: TextStyle(color: Colors.grey)),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                JsonCodeBlock(data: call.responseBody),
+            ]),
+          ),
+        ),
       ],
     );
+  }
+
+  String? _getContentTypeLabel(Map<String, dynamic>? headers) {
+    if (headers == null) return null;
+
+    dynamic contentType;
+    headers.forEach((key, value) {
+      if (key.toLowerCase() == 'content-type') {
+        contentType = value;
+      }
+    });
+
+    if (contentType == null) return null;
+
+    final String typeString = (contentType is List)
+        ? contentType.first.toString()
+        : contentType.toString();
+
+    if (typeString.contains('application/json')) return 'JSON';
+    if (typeString.contains('multipart/form-data')) return 'FormData';
+    if (typeString.contains('application/x-www-form-urlencoded')) return 'Form';
+    if (typeString.contains('text/plain')) return 'Text';
+    if (typeString.contains('text/html')) return 'HTML';
+    if (typeString.contains('application/xml')) return 'XML';
+    if (typeString.contains('image/')) return 'IMAGE';
+
+    return typeString.split(';').first.split('/').last.toUpperCase();
+  }
+
+  void _copyToClipboard(BuildContext context, String content) {
+    Clipboard.setData(ClipboardData(text: content));
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _copyAsCurl(BuildContext context) {
+    final call = widget.call;
+    final buffer = StringBuffer();
+    buffer.write('curl -X ${call.method} "${call.url}"');
+
+    if (call.requestHeaders != null && call.requestHeaders is Map) {
+      (call.requestHeaders as Map).forEach((key, value) {
+        buffer.write(' -H "$key: $value"');
+      });
+    }
+
+    if (call.requestBody != null) {
+      final body = call.requestBody is String
+          ? call.requestBody
+          : json.encode(call.requestBody);
+      buffer.write(" -d '$body'");
+    }
+
+    _copyToClipboard(context, buffer.toString());
   }
 
   Widget _buildDetailRow(String label, String value, {bool isError = false}) {
@@ -233,78 +336,6 @@ class CallDetailsScreen extends StatelessWidget {
         }),
       ],
     );
-  }
-
-  void _copyToClipboard(BuildContext context, String content) {
-    Clipboard.setData(ClipboardData(text: content));
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Copied to clipboard'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-
-  void _copyAsCurl(BuildContext context) {
-    final buffer = StringBuffer();
-    buffer.write('curl -X ${call.method} "${call.url}"');
-
-    if (call.requestHeaders != null && call.requestHeaders is Map) {
-      (call.requestHeaders as Map).forEach((key, value) {
-        buffer.write(' -H "$key: $value"');
-      });
-    }
-
-    if (call.requestBody != null) {
-      final body = call.requestBody is String
-          ? call.requestBody
-          : json.encode(call.requestBody);
-      buffer.write(" -d '$body'");
-    }
-
-    _copyToClipboard(context, buffer.toString());
-  }
-
-  String? _getContentTypeLabel(Map<String, dynamic>? headers) {
-    if (headers == null) return null;
-
-    // Dio headers can be Map<String, dynamic> or Map<String, List<String>>
-    dynamic contentType;
-    headers.forEach((key, value) {
-      if (key.toLowerCase() == 'content-type') {
-        contentType = value;
-      }
-    });
-
-    if (contentType == null) return null;
-
-    final String typeString = (contentType is List)
-        ? contentType.first.toString()
-        : contentType.toString();
-
-    if (typeString.contains('application/json')) return 'JSON';
-    if (typeString.contains('multipart/form-data')) return 'FormData';
-    if (typeString.contains('application/x-www-form-urlencoded')) return 'Form';
-    if (typeString.contains('text/plain')) return 'Text';
-    if (typeString.contains('text/html')) return 'HTML';
-    if (typeString.contains('application/xml')) return 'XML';
-    if (typeString.contains('image/')) return 'IMAGE';
-
-    return typeString.split(';').first.split('/').last.toUpperCase();
-  }
-
-  String _formatJson(dynamic data) {
-    if (data == null) return 'No data';
-    try {
-      if (data is String) {
-        final parsed = json.decode(data);
-        return const JsonEncoder.withIndent('  ').convert(parsed);
-      }
-      return const JsonEncoder.withIndent('  ').convert(data);
-    } catch (e) {
-      return data.toString();
-    }
   }
 }
 
@@ -736,7 +767,14 @@ class JsonNodeView extends StatefulWidget {
 }
 
 class _JsonNodeViewState extends State<JsonNodeView> {
-  bool _isExpanded = true;
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    // Collapse by default for deeper levels to prevent lag with huge JSONs
+    _isExpanded = widget.depth <= 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -977,4 +1015,23 @@ class _JsonNodeViewState extends State<JsonNodeView> {
 
     return TextSpan(text: text, style: baseStyle);
   }
+}
+class KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+  const KeepAliveWrapper({super.key, required this.child});
+
+  @override
+  State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 }

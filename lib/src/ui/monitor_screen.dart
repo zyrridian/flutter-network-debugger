@@ -171,12 +171,40 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                       ),
                     ),
                   ),
-                  title: Text(
-                    call.url,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14),
+                  title: Builder(
+                    builder: (context) {
+                      final uri = Uri.tryParse(call.url);
+                      String baseUrl = '';
+                      String endpoint = call.url;
+
+                      if (uri != null && uri.host.isNotEmpty) {
+                        baseUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}';
+                        endpoint = uri.path;
+                        if (endpoint.isEmpty) endpoint = '/';
+                        if (uri.hasQuery) endpoint += '?${uri.query}';
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (baseUrl.isNotEmpty)
+                            Text(
+                              baseUrl,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 10, color: Colors.grey),
+                            ),
+                          Text(
+                            endpoint,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   subtitle: Row(
                     children: [
