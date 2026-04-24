@@ -59,7 +59,9 @@ class CallDetailsScreen extends StatelessWidget {
               unselectedLabelColor: Colors.grey,
               indicatorWeight: 3,
               labelStyle: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.0),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 1.0),
               tabs: const [
                 Tab(text: 'OVERVIEW'),
                 Tab(text: 'REQUEST'),
@@ -147,7 +149,8 @@ class CallDetailsScreen extends StatelessWidget {
                 errorBuilder: (_, __, ___) => const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Center(
-                    child: Text('Failed to load image preview', style: TextStyle(color: Colors.grey)),
+                    child: Text('Failed to load image preview',
+                        style: TextStyle(color: Colors.grey)),
                   ),
                 ),
               ),
@@ -264,8 +267,9 @@ class CallDetailsScreen extends StatelessWidget {
 
     if (contentType == null) return null;
 
-    final String typeString =
-        (contentType is List) ? contentType.first.toString() : contentType.toString();
+    final String typeString = (contentType is List)
+        ? contentType.first.toString()
+        : contentType.toString();
 
     if (typeString.contains('application/json')) return 'JSON';
     if (typeString.contains('multipart/form-data')) return 'FormData';
@@ -351,8 +355,12 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
           firstChild: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 150),
             child: ClipRect(
-              child: JsonCodeBlock(
-                json: widget.content,
+              child: OverflowBox(
+                alignment: Alignment.topCenter,
+                maxHeight: double.infinity,
+                child: JsonCodeBlock(
+                  json: widget.content,
+                ),
               ),
             ),
           ),
@@ -378,12 +386,16 @@ class JsonCodeBlock extends StatefulWidget {
 
 class _JsonCodeBlockState extends State<JsonCodeBlock> {
   final List<TapGestureRecognizer> _recognizers = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isSearching = false;
 
   @override
   void dispose() {
     for (final recognizer in _recognizers) {
       recognizer.dispose();
     }
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -391,55 +403,150 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.grey[100],
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black12,
-          width: 0.5,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_isSearching)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'SEARCH JSON...',
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: BorderSide(
+                      color: isDark ? Colors.white24 : Colors.black26),
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.close, size: 16),
+                  onPressed: () {
+                    setState(() {
+                      _isSearching = false;
+                      _searchQuery = '';
+                      _searchController.clear();
+                    });
+                  },
+                ),
+              ),
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val.toLowerCase();
+                });
+              },
+            ),
+          ),
+        Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[900] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black12,
+                  width: 0.5,
+                ),
+              ),
+              child: SelectableText.rich(
+                _highlightJson(context, widget.json, isDark),
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            if (!_isSearching)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: IconButton(
+                  icon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                  onPressed: () {
+                    setState(() {
+                      _isSearching = true;
+                    });
+                  },
+                ),
+              ),
+          ],
         ),
-      ),
-      child: SelectableText.rich(
-        _highlightJson(context, widget.json, isDark),
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 12,
-          height: 1.4,
-        ),
-      ),
+      ],
     );
   }
 
+  List<InlineSpan> _applySearchHighlight(String text, TextStyle baseStyle,
+      {GestureRecognizer? recognizer}) {
+    if (_searchQuery.isEmpty)
+      return [TextSpan(text: text, style: baseStyle, recognizer: recognizer)];
+
+    final lowerText = text.toLowerCase();
+    int index = lowerText.indexOf(_searchQuery);
+    if (index == -1)
+      return [TextSpan(text: text, style: baseStyle, recognizer: recognizer)];
+
+    final List<InlineSpan> spans = [];
+    int start = 0;
+    final highlightStyle =
+        baseStyle.copyWith(backgroundColor: Colors.yellow, color: Colors.black);
+
+    while (index != -1) {
+      if (index > start) {
+        spans.add(TextSpan(
+            text: text.substring(start, index),
+            style: baseStyle,
+            recognizer: recognizer));
+      }
+      spans.add(TextSpan(
+          text: text.substring(index, index + _searchQuery.length),
+          style: highlightStyle,
+          recognizer: recognizer));
+      start = index + _searchQuery.length;
+      index = lowerText.indexOf(_searchQuery, start);
+    }
+    if (start < text.length) {
+      spans.add(TextSpan(
+          text: text.substring(start),
+          style: baseStyle,
+          recognizer: recognizer));
+    }
+    return spans;
+  }
+
   TextSpan _highlightJson(BuildContext context, String source, bool isDark) {
-    final List<TextSpan> spans = [];
+    final List<InlineSpan> spans = [];
     final regExp = RegExp(
       r'("(?:\\"|[^"])*")(?=\s*:)|("(?:\\"|[^"])*")|(\b\d+\b)|(\btrue|false|null\b)|([\{\}\[\]\:,])',
       multiLine: true,
     );
+    final defaultStyle =
+        TextStyle(color: isDark ? Colors.white : Colors.black87);
 
     int lastIndex = 0;
     for (final match in regExp.allMatches(source)) {
-      // Add plain text before match
       if (match.start > lastIndex) {
-        spans.add(TextSpan(text: source.substring(lastIndex, match.start)));
+        spans.addAll(_applySearchHighlight(
+            source.substring(lastIndex, match.start), defaultStyle));
       }
 
       if (match.group(1) != null) {
-        // Key
-        spans.add(TextSpan(
-          text: match.group(1),
-          style: TextStyle(
+        spans.addAll(_applySearchHighlight(
+          match.group(1)!,
+          TextStyle(
               color: isDark ? Colors.lightBlueAccent : Colors.indigo,
               fontWeight: FontWeight.bold),
         ));
       } else if (match.group(2) != null) {
-        // String value
         final stringValue = match.group(2)!;
         final rawValue = stringValue.replaceAll('"', '');
-        final isUrl = rawValue.startsWith('http://') || rawValue.startsWith('https://');
+        final isUrl =
+            rawValue.startsWith('http://') || rawValue.startsWith('https://');
 
         if (isUrl) {
           final recognizer = TapGestureRecognizer()
@@ -448,7 +555,8 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                 MaterialPageRoute(
                   builder: (_) => Scaffold(
                     appBar: AppBar(
-                      title: Text(rawValue, style: const TextStyle(fontSize: 12)),
+                      title:
+                          Text(rawValue, style: const TextStyle(fontSize: 12)),
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                     ),
@@ -456,7 +564,8 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                       child: InteractiveViewer(
                         child: Image.network(
                           rawValue,
-                          errorBuilder: (context, error, stackTrace) => const Center(
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(
                             child: Padding(
                               padding: EdgeInsets.all(16.0),
                               child: Text(
@@ -475,9 +584,9 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
             };
           _recognizers.add(recognizer);
 
-          spans.add(TextSpan(
-            text: stringValue,
-            style: TextStyle(
+          spans.addAll(_applySearchHighlight(
+            stringValue,
+            TextStyle(
               color: isDark ? Colors.blue[300] : Colors.blue[700],
               decoration: TextDecoration.underline,
               fontWeight: FontWeight.bold,
@@ -485,28 +594,25 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
             recognizer: recognizer,
           ));
         } else {
-          spans.add(TextSpan(
-            text: stringValue,
-            style: const TextStyle(color: Colors.teal),
+          spans.addAll(_applySearchHighlight(
+            stringValue,
+            const TextStyle(color: Colors.teal),
           ));
         }
       } else if (match.group(3) != null) {
-        // Number
-        spans.add(TextSpan(
-          text: match.group(3),
-          style: const TextStyle(color: Colors.orange),
+        spans.addAll(_applySearchHighlight(
+          match.group(3)!,
+          const TextStyle(color: Colors.orange),
         ));
       } else if (match.group(4) != null) {
-        // Keyword (bool/null)
-        spans.add(TextSpan(
-          text: match.group(4),
-          style: const TextStyle(color: Colors.redAccent),
+        spans.addAll(_applySearchHighlight(
+          match.group(4)!,
+          const TextStyle(color: Colors.redAccent),
         ));
       } else if (match.group(5) != null) {
-        // Punctuation
-        spans.add(TextSpan(
-          text: match.group(5),
-          style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+        spans.addAll(_applySearchHighlight(
+          match.group(5)!,
+          TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
         ));
       }
 
@@ -514,11 +620,10 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
     }
 
     if (lastIndex < source.length) {
-      spans.add(TextSpan(text: source.substring(lastIndex)));
+      spans.addAll(
+          _applySearchHighlight(source.substring(lastIndex), defaultStyle));
     }
 
-    return TextSpan(
-        children: spans,
-        style: TextStyle(color: isDark ? Colors.white : Colors.black87));
+    return TextSpan(children: spans, style: defaultStyle);
   }
 }
