@@ -113,6 +113,13 @@ class _MyHomePageState extends State<MyHomePage> {
         data: formData,
         options: options,
       );
+
+      // IMAGE PREVIEW TEST
+      debugPrint('Making Image GET request...');
+      await dio.get(
+        'https://dog.ceo/api/breeds/image/random',
+        options: options,
+      );
     } catch (e) {
       debugPrint('Error in _makeRequests: $e');
     }

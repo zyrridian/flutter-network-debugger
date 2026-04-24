@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/network_call.dart';
@@ -114,6 +115,9 @@ class CallDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildResponse(BuildContext context) {
+    final contentType = _getContentTypeLabel(call.responseHeaders);
+    final isImage = contentType == 'IMAGE';
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -125,11 +129,32 @@ class CallDetailsScreen extends StatelessWidget {
         const Divider(height: 32),
         _buildSectionHeader(
           'Body',
-          _formatJson(call.responseBody),
-          subtitle: _getContentTypeLabel(call.responseHeaders),
+          isImage ? call.url : _formatJson(call.responseBody),
+          subtitle: contentType,
         ),
         const SizedBox(height: 8),
-        JsonCodeBlock(json: _formatJson(call.responseBody)),
+        if (isImage)
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.network(
+                call.url,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(
+                    child: Text('Failed to load image preview', style: TextStyle(color: Colors.grey)),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          JsonCodeBlock(json: _formatJson(call.responseBody)),
       ],
     );
   }
@@ -248,6 +273,7 @@ class CallDetailsScreen extends StatelessWidget {
     if (typeString.contains('text/plain')) return 'Text';
     if (typeString.contains('text/html')) return 'HTML';
     if (typeString.contains('application/xml')) return 'XML';
+    if (typeString.contains('image/')) return 'IMAGE';
 
     return typeString.split(';').first.split('/').last.toUpperCase();
   }
@@ -341,10 +367,25 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
   }
 }
 
-class JsonCodeBlock extends StatelessWidget {
+class JsonCodeBlock extends StatefulWidget {
   final String json;
 
   const JsonCodeBlock({super.key, required this.json});
+
+  @override
+  State<JsonCodeBlock> createState() => _JsonCodeBlockState();
+}
+
+class _JsonCodeBlockState extends State<JsonCodeBlock> {
+  final List<TapGestureRecognizer> _recognizers = [];
+
+  @override
+  void dispose() {
+    for (final recognizer in _recognizers) {
+      recognizer.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +403,7 @@ class JsonCodeBlock extends StatelessWidget {
         ),
       ),
       child: SelectableText.rich(
-        _highlightJson(json, isDark),
+        _highlightJson(context, widget.json, isDark),
         style: const TextStyle(
           fontFamily: 'monospace',
           fontSize: 12,
@@ -372,7 +413,7 @@ class JsonCodeBlock extends StatelessWidget {
     );
   }
 
-  TextSpan _highlightJson(String source, bool isDark) {
+  TextSpan _highlightJson(BuildContext context, String source, bool isDark) {
     final List<TextSpan> spans = [];
     final regExp = RegExp(
       r'("(?:\\"|[^"])*")(?=\s*:)|("(?:\\"|[^"])*")|(\b\d+\b)|(\btrue|false|null\b)|([\{\}\[\]\:,])',
@@ -396,10 +437,59 @@ class JsonCodeBlock extends StatelessWidget {
         ));
       } else if (match.group(2) != null) {
         // String value
-        spans.add(TextSpan(
-          text: match.group(2),
-          style: const TextStyle(color: Colors.teal),
-        ));
+        final stringValue = match.group(2)!;
+        final rawValue = stringValue.replaceAll('"', '');
+        final isUrl = rawValue.startsWith('http://') || rawValue.startsWith('https://');
+
+        if (isUrl) {
+          final recognizer = TapGestureRecognizer()
+            ..onTap = () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(
+                      title: Text(rawValue, style: const TextStyle(fontSize: 12)),
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                    body: Center(
+                      child: InteractiveViewer(
+                        child: Image.network(
+                          rawValue,
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text(
+                                'Failed to load preview.\nThis URL might not be an image.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            };
+          _recognizers.add(recognizer);
+
+          spans.add(TextSpan(
+            text: stringValue,
+            style: TextStyle(
+              color: isDark ? Colors.blue[300] : Colors.blue[700],
+              decoration: TextDecoration.underline,
+              fontWeight: FontWeight.bold,
+            ),
+            recognizer: recognizer,
+          ));
+        } else {
+          spans.add(TextSpan(
+            text: stringValue,
+            style: const TextStyle(color: Colors.teal),
+          ));
+        }
       } else if (match.group(3) != null) {
         // Number
         spans.add(TextSpan(
