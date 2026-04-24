@@ -52,7 +52,7 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
         textSelectionTheme: TextSelectionThemeData(
           cursorColor: isDark ? Colors.white : Colors.black,
           selectionColor:
-              (isDark ? Colors.white : Colors.black).withOpacity(0.2),
+              (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2),
           selectionHandleColor: isDark ? Colors.white : Colors.black,
         ),
         textButtonTheme: TextButtonThemeData(
@@ -190,9 +190,13 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                       ),
                       const Text(' • ', style: TextStyle(color: Colors.grey)),
                       Text(
-                        '${call.durationMilliseconds > -1 ? '${call.durationMilliseconds}ms' : '...'}',
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12),
+                        call.durationMilliseconds > -1
+                            ? '${call.durationMilliseconds}ms'
+                            : '...',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),

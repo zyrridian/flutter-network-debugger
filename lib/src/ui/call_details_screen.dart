@@ -33,7 +33,7 @@ class CallDetailsScreen extends StatelessWidget {
               secondary: Colors.grey,
               surfaceTint: Colors.transparent,
             ),
-        splashColor: Colors.grey.withOpacity(0.1),
+        splashColor: Colors.grey.withValues(alpha: 0.1),
         highlightColor: Colors.transparent,
         appBarTheme: AppBarTheme(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -150,7 +150,7 @@ class CallDetailsScreen extends StatelessWidget {
         if (isImage)
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
               borderRadius: BorderRadius.circular(4),
             ),
             child: ClipRRect(
@@ -495,13 +495,15 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
 
   List<InlineSpan> _applySearchHighlight(String text, TextStyle baseStyle,
       {GestureRecognizer? recognizer}) {
-    if (_searchQuery.isEmpty)
+    if (_searchQuery.isEmpty) {
       return [TextSpan(text: text, style: baseStyle, recognizer: recognizer)];
+    }
 
     final lowerText = text.toLowerCase();
     int index = lowerText.indexOf(_searchQuery);
-    if (index == -1)
+    if (index == -1) {
       return [TextSpan(text: text, style: baseStyle, recognizer: recognizer)];
+    }
 
     final List<InlineSpan> spans = [];
     int start = 0;
