@@ -446,6 +446,20 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
   String _searchQuery = '';
   bool _isSearching = false;
   bool _isTreeView = true;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Delay rendering of heavy JSON block to allow tab transition animation to finish smoothly
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -507,20 +521,31 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                   width: 0.5,
                 ),
               ),
-              child: _isTreeView
-                  ? JsonTreeView(
-                      data: widget.data,
-                      searchQuery: _searchQuery,
-                    )
-                  : SelectableText.rich(
-                      _highlightJson(
-                          context, _formatJson(widget.data), isDark),
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        height: 1.4,
+              child: _isLoading
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                    ),
+                    )
+                  : (_isTreeView
+                      ? JsonTreeView(
+                          data: widget.data,
+                          searchQuery: _searchQuery,
+                        )
+                      : SelectableText.rich(
+                          _highlightJson(
+                              context, _formatJson(widget.data), isDark),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        )),
             ),
             Positioned(
               top: 4,
@@ -772,8 +797,8 @@ class _JsonNodeViewState extends State<JsonNodeView> {
   @override
   void initState() {
     super.initState();
-    // Collapse by default for deeper levels to prevent lag with huge JSONs
-    _isExpanded = widget.depth <= 0;
+    // Expand by default as requested
+    _isExpanded = true;
   }
 
   @override
