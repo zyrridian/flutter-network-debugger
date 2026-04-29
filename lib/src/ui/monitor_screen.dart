@@ -219,7 +219,7 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              // ROW 2: Endpoint & Status/Duration
+                              // ROW 2: Endpoint & Status/Duration (stacked)
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -233,34 +233,37 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                                           fontSize: 15),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    '${call.statusCode ?? 'PENDING'}',
-                                    style: TextStyle(
-                                      color: _getStatusColor(call),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const Text(' • ',
-                                      style: TextStyle(
-                                          color: Colors.grey, fontSize: 13)),
-                                  Text(
-                                    call.durationMilliseconds > -1
-                                        ? '${call.durationMilliseconds}ms'
-                                        : '...',
-                                    style: const TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 13,
-                                    ),
-                                  ),
                                 ],
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${call.statusCode ?? 'PENDING'}',
+                              style: TextStyle(
+                                color: _getStatusColor(call),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              call.durationMilliseconds > -1
+                                  ? '${call.durationMilliseconds}ms'
+                                  : '...',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(width: 8),
-                        const Icon(Icons.chevron_right,
+                        const Icon(Icons.arrow_forward_ios,
                             size: 16, color: Colors.grey),
                       ],
                     ),

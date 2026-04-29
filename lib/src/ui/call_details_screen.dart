@@ -123,7 +123,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildDetailRow('URL', call.url),
+        _buildDetailRowWithCopy('URL', call.url, context),
         _buildDetailRow('Method', _buildMethodBadge(call.method)),
         _buildDetailRow('Status Code', call.statusCode?.toString() ?? 'N/A'),
         _buildDetailRow('Duration',
@@ -332,6 +332,39 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
               style:
                   TextStyle(fontSize: 15, color: isError ? Colors.red : null),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRowWithCopy(String label, String value, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.grey)),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: SelectableText(
+                  value,
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.copy, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Copy URL',
+                onPressed: () => _copyToClipboard(context, value),
+              ),
+            ],
+          ),
         ],
       ),
     );
