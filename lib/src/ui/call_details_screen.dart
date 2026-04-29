@@ -12,17 +12,42 @@ import '../models/network_call.dart';
 /// * Request tab - Headers and body payload
 /// * Response tab - Headers and body payload
 /// * Copy as cURL button to export the request
-class CallDetailsScreen extends StatelessWidget {
-  /// The network call to display details for.
+class CallDetailsScreen extends StatefulWidget {
   final NetworkCall call;
 
-  /// Creates a [CallDetailsScreen].
-  ///
-  /// The [call] parameter is required.
   const CallDetailsScreen({super.key, required this.call});
 
   @override
+  State<CallDetailsScreen> createState() => _CallDetailsScreenState();
+}
+
+class _CallDetailsScreenState extends State<CallDetailsScreen> {
+  final Map<String, String> _formattedCache = {};
+
+  String _formatJsonCached(String key, dynamic data) {
+    if (_formattedCache.containsKey(key)) return _formattedCache[key]!;
+    final formatted = _formatJson(data);
+    _formattedCache[key] = formatted;
+    return formatted;
+  }
+
+  String _formatJson(dynamic data) {
+    if (data == null) return 'No data';
+    try {
+      if (data is String) {
+        final parsed = json.decode(data);
+        return const JsonEncoder.withIndent('  ').convert(parsed);
+      }
+      return const JsonEncoder.withIndent('  ').convert(data);
+    } catch (e) {
+      return data.toString();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // final isDark = Theme.of(context).brightness == Brightness.dark;
+    // final call = widget.call;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Theme(
@@ -83,9 +108,9 @@ class CallDetailsScreen extends StatelessWidget {
           ),
           body: TabBarView(
             children: [
-              _buildOverview(context),
-              _buildRequest(context),
-              _buildResponse(context),
+              KeepAliveWrapper(child: _buildOverview(context)),
+              KeepAliveWrapper(child: _buildRequest(context)),
+              KeepAliveWrapper(child: _buildResponse(context)),
             ],
           ),
         ),
@@ -94,11 +119,12 @@ class CallDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildOverview(BuildContext context) {
+    final call = widget.call;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildDetailRow('URL', call.url),
-        _buildDetailRow('Method', call.method),
+        _buildDetailRowWithCopy('URL', call.url, context),
+        _buildDetailRow('Method', _buildMethodBadge(call.method)),
         _buildDetailRow('Status Code', call.statusCode?.toString() ?? 'N/A'),
         _buildDetailRow('Duration',
             '${call.durationMilliseconds > -1 ? call.durationMilliseconds : 'N/A'} ms'),
@@ -109,72 +135,186 @@ class CallDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRequest(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildSectionHeader('Headers', _formatJson(call.requestHeaders)),
-        const SizedBox(height: 8),
-        JsonCodeBlock(json: _formatJson(call.requestHeaders)),
-        const Divider(height: 32),
-        _buildSectionHeader(
-          'Body',
-          _formatJson(call.requestBody),
-          subtitle: _getContentTypeLabel(call.requestHeaders),
+  Widget _buildMethodBadge(String method) {
+    final color = _getMethodColor(method);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        method.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 11,
+          letterSpacing: 0.5,
         ),
-        const SizedBox(height: 8),
-        JsonCodeBlock(json: _formatJson(call.requestBody)),
+      ),
+    );
+  }
+
+  Color _getMethodColor(String method) {
+    switch (method.toUpperCase()) {
+      case 'GET':
+        return Colors.green[700]!;
+      case 'POST':
+        return Colors.blue[700]!;
+      case 'PUT':
+        return Colors.orange[700]!;
+      case 'PATCH':
+        return Colors.indigo[400]!;
+      case 'DELETE':
+        return Colors.red[700]!;
+      default:
+        return Colors.grey[700]!;
+    }
+  }
+
+  Widget _buildRequest(BuildContext context) {
+    final call = widget.call;
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              _buildSectionHeader(
+                  'Headers', _formatJsonCached('req_h', call.requestHeaders)),
+              const SizedBox(height: 8),
+              JsonCodeBlock(data: call.requestHeaders),
+              const Divider(height: 32),
+              _buildSectionHeader(
+                'Body',
+                _formatJsonCached('req_b', call.requestBody),
+                subtitle: _getContentTypeLabel(call.requestHeaders),
+              ),
+              const SizedBox(height: 8),
+              JsonCodeBlock(data: call.requestBody),
+            ]),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildResponse(BuildContext context) {
+    final call = widget.call;
     final contentType = _getContentTypeLabel(call.responseHeaders);
     final isImage = contentType == 'IMAGE';
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        ExpandablePreviewSection(
-          title: 'Headers',
-          content: _formatJson(call.responseHeaders),
-          onCopy: (content) => _copyToClipboard(context, content),
-        ),
-        const Divider(height: 32),
-        _buildSectionHeader(
-          'Body',
-          isImage ? call.url : _formatJson(call.responseBody),
-          subtitle: contentType,
-        ),
-        const SizedBox(height: 8),
-        if (isImage)
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image.network(
-                call.url,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(
-                    child: Text('Failed to load image preview',
-                        style: TextStyle(color: Colors.grey)),
-                  ),
-                ),
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              ExpandablePreviewSection(
+                title: 'Headers',
+                data: call.responseHeaders,
+                onCopy: (content) => _copyToClipboard(context, content),
               ),
-            ),
-          )
-        else
-          JsonCodeBlock(json: _formatJson(call.responseBody)),
+              const Divider(height: 32),
+              _buildSectionHeader(
+                'Body',
+                isImage
+                    ? call.url
+                    : _formatJsonCached('res_b', call.responseBody),
+                subtitle: contentType,
+              ),
+              const SizedBox(height: 8),
+              if (isImage)
+                Container(
+                  decoration: BoxDecoration(
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.network(
+                      call.url,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(
+                          child: Text('Failed to load image preview',
+                              style: TextStyle(color: Colors.grey)),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                JsonCodeBlock(data: call.responseBody),
+            ]),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isError = false}) {
+  String? _getContentTypeLabel(Map<String, dynamic>? headers) {
+    if (headers == null) return null;
+
+    dynamic contentType;
+    headers.forEach((key, value) {
+      if (key.toLowerCase() == 'content-type') {
+        contentType = value;
+      }
+    });
+
+    if (contentType == null) return null;
+
+    final String typeString = (contentType is List)
+        ? contentType.first.toString()
+        : contentType.toString();
+
+    if (typeString.contains('application/json')) return 'JSON';
+    if (typeString.contains('multipart/form-data')) return 'FormData';
+    if (typeString.contains('application/x-www-form-urlencoded')) return 'Form';
+    if (typeString.contains('text/plain')) return 'Text';
+    if (typeString.contains('text/html')) return 'HTML';
+    if (typeString.contains('application/xml')) return 'XML';
+    if (typeString.contains('image/')) return 'IMAGE';
+
+    return typeString.split(';').first.split('/').last.toUpperCase();
+  }
+
+  void _copyToClipboard(BuildContext context, String content) {
+    Clipboard.setData(ClipboardData(text: content));
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied to clipboard'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _copyAsCurl(BuildContext context) {
+    final call = widget.call;
+    final buffer = StringBuffer();
+    buffer.write('curl -X ${call.method} "${call.url}"');
+
+    if (call.requestHeaders != null && call.requestHeaders is Map) {
+      (call.requestHeaders as Map).forEach((key, value) {
+        buffer.write(' -H "$key: $value"');
+      });
+    }
+
+    if (call.requestBody != null) {
+      final body = call.requestBody is String
+          ? call.requestBody
+          : json.encode(call.requestBody);
+      buffer.write(" -d '$body'");
+    }
+
+    _copyToClipboard(context, buffer.toString());
+  }
+
+  Widget _buildDetailRow(String label, dynamic value, {bool isError = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -184,9 +324,47 @@ class CallDetailsScreen extends StatelessWidget {
               style: const TextStyle(
                   fontWeight: FontWeight.bold, color: Colors.grey)),
           const SizedBox(height: 4),
-          SelectableText(
-            value,
-            style: TextStyle(fontSize: 16, color: isError ? Colors.red : null),
+          if (value is Widget)
+            value
+          else
+            SelectableText(
+              value.toString(),
+              style:
+                  TextStyle(fontSize: 15, color: isError ? Colors.red : null),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRowWithCopy(
+      String label, String value, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.grey)),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: SelectableText(
+                  value,
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.copy, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Copy URL',
+                onPressed: () => _copyToClipboard(context, value),
+              ),
+            ],
           ),
         ],
       ),
@@ -234,89 +412,17 @@ class CallDetailsScreen extends StatelessWidget {
       ],
     );
   }
-
-  void _copyToClipboard(BuildContext context, String content) {
-    Clipboard.setData(ClipboardData(text: content));
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Copied to clipboard'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-
-  void _copyAsCurl(BuildContext context) {
-    final buffer = StringBuffer();
-    buffer.write('curl -X ${call.method} "${call.url}"');
-
-    if (call.requestHeaders != null && call.requestHeaders is Map) {
-      (call.requestHeaders as Map).forEach((key, value) {
-        buffer.write(' -H "$key: $value"');
-      });
-    }
-
-    if (call.requestBody != null) {
-      final body = call.requestBody is String
-          ? call.requestBody
-          : json.encode(call.requestBody);
-      buffer.write(" -d '$body'");
-    }
-
-    _copyToClipboard(context, buffer.toString());
-  }
-
-  String? _getContentTypeLabel(Map<String, dynamic>? headers) {
-    if (headers == null) return null;
-
-    // Dio headers can be Map<String, dynamic> or Map<String, List<String>>
-    dynamic contentType;
-    headers.forEach((key, value) {
-      if (key.toLowerCase() == 'content-type') {
-        contentType = value;
-      }
-    });
-
-    if (contentType == null) return null;
-
-    final String typeString = (contentType is List)
-        ? contentType.first.toString()
-        : contentType.toString();
-
-    if (typeString.contains('application/json')) return 'JSON';
-    if (typeString.contains('multipart/form-data')) return 'FormData';
-    if (typeString.contains('application/x-www-form-urlencoded')) return 'Form';
-    if (typeString.contains('text/plain')) return 'Text';
-    if (typeString.contains('text/html')) return 'HTML';
-    if (typeString.contains('application/xml')) return 'XML';
-    if (typeString.contains('image/')) return 'IMAGE';
-
-    return typeString.split(';').first.split('/').last.toUpperCase();
-  }
-
-  String _formatJson(dynamic data) {
-    if (data == null) return 'No data';
-    try {
-      if (data is String) {
-        final parsed = json.decode(data);
-        return const JsonEncoder.withIndent('  ').convert(parsed);
-      }
-      return const JsonEncoder.withIndent('  ').convert(data);
-    } catch (e) {
-      return data.toString();
-    }
-  }
 }
 
 class ExpandablePreviewSection extends StatefulWidget {
   final String title;
-  final String content;
+  final dynamic data;
   final Function(String) onCopy;
 
   const ExpandablePreviewSection({
     super.key,
     required this.title,
-    required this.content,
+    required this.data,
     required this.onCopy,
   });
 
@@ -330,7 +436,8 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
 
   @override
   Widget build(BuildContext context) {
-    final isLong = widget.content.split('\n').length > 6;
+    final content = _formatJson(widget.data);
+    final isLong = content.split('\n').length > 6;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +463,7 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
                   ),
                 IconButton(
                   icon: const Icon(Icons.copy, size: 20),
-                  onPressed: () => widget.onCopy(widget.content),
+                  onPressed: () => widget.onCopy(content),
                 ),
               ],
             ),
@@ -371,12 +478,12 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
                 alignment: Alignment.topCenter,
                 maxHeight: double.infinity,
                 child: JsonCodeBlock(
-                  json: widget.content,
+                  data: widget.data,
                 ),
               ),
             ),
           ),
-          secondChild: JsonCodeBlock(json: widget.content),
+          secondChild: JsonCodeBlock(data: widget.data),
           crossFadeState: (isLong && !_isExpanded)
               ? CrossFadeState.showFirst
               : CrossFadeState.showSecond,
@@ -385,28 +492,52 @@ class _ExpandablePreviewSectionState extends State<ExpandablePreviewSection> {
       ],
     );
   }
+
+  String _formatJson(dynamic data) {
+    if (data == null) return 'No data';
+    try {
+      if (data is String) {
+        final parsed = json.decode(data);
+        return const JsonEncoder.withIndent('  ').convert(parsed);
+      }
+      return const JsonEncoder.withIndent('  ').convert(data);
+    } catch (e) {
+      return data.toString();
+    }
+  }
 }
 
 class JsonCodeBlock extends StatefulWidget {
-  final String json;
+  final dynamic data;
 
-  const JsonCodeBlock({super.key, required this.json});
+  const JsonCodeBlock({super.key, required this.data});
 
   @override
   State<JsonCodeBlock> createState() => _JsonCodeBlockState();
 }
 
 class _JsonCodeBlockState extends State<JsonCodeBlock> {
-  final List<TapGestureRecognizer> _recognizers = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isSearching = false;
+  bool _isTreeView = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Delay rendering of heavy JSON block to allow tab transition animation to finish smoothly
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
-    for (final recognizer in _recognizers) {
-      recognizer.dispose();
-    }
     _searchController.dispose();
     super.dispose();
   }
@@ -465,32 +596,79 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                   width: 0.5,
                 ),
               ),
-              child: SelectableText.rich(
-                _highlightJson(context, widget.json, isDark),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  height: 1.4,
-                ),
+              child: _isLoading
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  : (_isTreeView
+                      ? JsonTreeView(
+                          data: widget.data,
+                          searchQuery: _searchQuery,
+                        )
+                      : SelectableText.rich(
+                          _highlightJson(
+                              context, _formatJson(widget.data), isDark),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
+                        )),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                        _isTreeView ? Icons.code : Icons.account_tree_outlined,
+                        size: 16,
+                        color: Colors.grey),
+                    tooltip: _isTreeView ? 'Raw View' : 'Tree View',
+                    onPressed: () {
+                      setState(() {
+                        _isTreeView = !_isTreeView;
+                      });
+                    },
+                  ),
+                  if (!_isSearching)
+                    IconButton(
+                      icon: const Icon(Icons.search,
+                          size: 16, color: Colors.grey),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = true;
+                        });
+                      },
+                    ),
+                ],
               ),
             ),
-            if (!_isSearching)
-              Positioned(
-                top: 4,
-                right: 4,
-                child: IconButton(
-                  icon: const Icon(Icons.search, size: 16, color: Colors.grey),
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = true;
-                    });
-                  },
-                ),
-              ),
           ],
         ),
       ],
     );
+  }
+
+  String _formatJson(dynamic data) {
+    if (data == null) return 'No data';
+    try {
+      if (data is String) {
+        final parsed = json.decode(data);
+        return const JsonEncoder.withIndent('  ').convert(parsed);
+      }
+      return const JsonEncoder.withIndent('  ').convert(data);
+    } catch (e) {
+      return data.toString();
+    }
   }
 
   List<InlineSpan> _applySearchHighlight(String text, TextStyle baseStyle,
@@ -596,7 +774,6 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
                 ),
               );
             };
-          _recognizers.add(recognizer);
 
           spans.addAll(_applySearchHighlight(
             stringValue,
@@ -640,4 +817,325 @@ class _JsonCodeBlockState extends State<JsonCodeBlock> {
 
     return TextSpan(children: spans, style: defaultStyle);
   }
+}
+
+class JsonTreeView extends StatelessWidget {
+  final dynamic data;
+  final String searchQuery;
+
+  const JsonTreeView({super.key, required this.data, this.searchQuery = ''});
+
+  @override
+  Widget build(BuildContext context) {
+    if (data == null) return const Text('No data');
+
+    dynamic displayData = data;
+    if (displayData is String) {
+      try {
+        displayData = json.decode(displayData);
+      } catch (e) {
+        // Not a JSON string
+      }
+    }
+
+    return JsonNodeView(
+      value: displayData,
+      searchQuery: searchQuery,
+      depth: 0,
+    );
+  }
+}
+
+class JsonNodeView extends StatefulWidget {
+  final String? keyName;
+  final dynamic value;
+  final int depth;
+  final bool isLast;
+  final String searchQuery;
+
+  const JsonNodeView({
+    super.key,
+    this.keyName,
+    required this.value,
+    this.depth = 0,
+    this.isLast = true,
+    this.searchQuery = '',
+  });
+
+  @override
+  State<JsonNodeView> createState() => _JsonNodeViewState();
+}
+
+class _JsonNodeViewState extends State<JsonNodeView> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    // Expand by default as requested
+    _isExpanded = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final value = widget.value;
+    final isCollection = value is Map || value is List;
+    final isEmpty = isCollection &&
+        (value is Map ? value.isEmpty : (value as List).isEmpty);
+
+    if (!isCollection || isEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(left: widget.depth * 16.0),
+        child: _buildLeaf(context, isDark),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding:
+                  EdgeInsets.only(left: widget.depth * 16.0, top: 2, bottom: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _isExpanded ? Icons.arrow_drop_down : Icons.arrow_right,
+                    size: 18,
+                    color: Colors.grey,
+                  ),
+                  _buildCollectionHeader(context, isDark),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_isExpanded) ..._buildChildren(context, isDark),
+        if (!_isExpanded)
+          Padding(
+            padding: EdgeInsets.only(left: (widget.depth * 16.0) + 20),
+            child: Text(
+              value is Map ? '{...}' : '[...]',
+              style: const TextStyle(
+                  color: Colors.grey, fontSize: 12, fontFamily: 'monospace'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildLeaf(BuildContext context, bool isDark) {
+    final keyPart = widget.keyName != null
+        ? TextSpan(
+            text: '"${widget.keyName}": ',
+            style: TextStyle(
+                color: isDark ? Colors.lightBlueAccent : Colors.indigo,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                fontFamily: 'monospace'))
+        : null;
+
+    final valuePart = _getValueSpan(context, widget.value, isDark);
+
+    return SelectableText.rich(
+      TextSpan(children: [
+        if (keyPart != null) keyPart,
+        valuePart,
+        if (!widget.isLast)
+          TextSpan(
+              text: ',',
+              style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  fontSize: 12,
+                  fontFamily: 'monospace')),
+      ]),
+    );
+  }
+
+  Widget _buildCollectionHeader(BuildContext context, bool isDark) {
+    final keyPart = widget.keyName != null ? '"${widget.keyName}": ' : '';
+    final bracket = widget.value is Map ? '{' : '[';
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+        children: [
+          if (keyPart.isNotEmpty)
+            TextSpan(
+              text: keyPart,
+              style: TextStyle(
+                  color: isDark ? Colors.lightBlueAccent : Colors.indigo,
+                  fontWeight: FontWeight.bold),
+            ),
+          TextSpan(
+            text: bracket,
+            style:
+                TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildChildren(BuildContext context, bool isDark) {
+    final List<Widget> children = [];
+    if (widget.value is Map) {
+      final Map map = widget.value;
+      final keys = map.keys.toList();
+      for (int i = 0; i < keys.length; i++) {
+        children.add(JsonNodeView(
+          keyName: keys[i].toString(),
+          value: map[keys[i]],
+          depth: widget.depth + 1,
+          isLast: i == keys.length - 1,
+          searchQuery: widget.searchQuery,
+        ));
+      }
+      children.add(Padding(
+        padding: EdgeInsets.only(left: (widget.depth * 16.0) + 18),
+        child: Text('}${widget.isLast ? "" : ","}',
+            style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontSize: 12,
+                fontFamily: 'monospace')),
+      ));
+    } else if (widget.value is List) {
+      final List list = widget.value;
+      for (int i = 0; i < list.length; i++) {
+        children.add(JsonNodeView(
+          value: list[i],
+          depth: widget.depth + 1,
+          isLast: i == list.length - 1,
+          searchQuery: widget.searchQuery,
+        ));
+      }
+      children.add(Padding(
+        padding: EdgeInsets.only(left: (widget.depth * 16.0) + 18),
+        child: Text(']${widget.isLast ? "" : ","}',
+            style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontSize: 12,
+                fontFamily: 'monospace')),
+      ));
+    }
+    return children;
+  }
+
+  InlineSpan _getValueSpan(BuildContext context, dynamic value, bool isDark) {
+    TextStyle style;
+    String text = value.toString();
+
+    if (value is String) {
+      style = const TextStyle(color: Colors.teal);
+      text = '"$value"';
+
+      // Handle URLs
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        return TextSpan(
+          text: text,
+          style: style.copyWith(
+              color: isDark ? Colors.blue[300] : Colors.blue[700],
+              decoration: TextDecoration.underline,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              fontFamily: 'monospace'),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              // URL Preview logic (same as in raw view)
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(
+                      title: Text(value, style: const TextStyle(fontSize: 12)),
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                    body: Center(
+                      child: InteractiveViewer(
+                        child: Image.network(
+                          value,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text(
+                                'Failed to load preview.\nThis URL might not be an image.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+        );
+      }
+    } else if (value is num) {
+      style = const TextStyle(color: Colors.orange);
+    } else if (value is bool || value == null) {
+      style = const TextStyle(color: Colors.redAccent);
+    } else {
+      style = TextStyle(color: isDark ? Colors.white : Colors.black87);
+    }
+
+    final baseStyle = style.copyWith(fontSize: 12, fontFamily: 'monospace');
+
+    // Apply search highlight
+    if (widget.searchQuery.isNotEmpty &&
+        text.toLowerCase().contains(widget.searchQuery)) {
+      final lowerText = text.toLowerCase();
+      int index = lowerText.indexOf(widget.searchQuery);
+      final List<InlineSpan> spans = [];
+      int start = 0;
+      final highlightStyle = baseStyle.copyWith(
+          backgroundColor: Colors.yellow, color: Colors.black);
+
+      while (index != -1) {
+        if (index > start) {
+          spans.add(
+              TextSpan(text: text.substring(start, index), style: baseStyle));
+        }
+        spans.add(TextSpan(
+            text: text.substring(index, index + widget.searchQuery.length),
+            style: highlightStyle));
+        start = index + widget.searchQuery.length;
+        index = lowerText.indexOf(widget.searchQuery, start);
+      }
+      if (start < text.length) {
+        spans.add(TextSpan(text: text.substring(start), style: baseStyle));
+      }
+      return TextSpan(children: spans);
+    }
+
+    return TextSpan(text: text, style: baseStyle);
+  }
+}
+
+class KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+  const KeepAliveWrapper({super.key, required this.child});
+
+  @override
+  State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+
+  @override
+  bool get wantKeepAlive => true;
 }
