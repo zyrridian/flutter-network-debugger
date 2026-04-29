@@ -337,7 +337,8 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
     );
   }
 
-  Widget _buildDetailRowWithCopy(String label, String value, BuildContext context) {
+  Widget _buildDetailRowWithCopy(
+      String label, String value, BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
