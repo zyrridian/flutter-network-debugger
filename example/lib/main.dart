@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_network_debugger/flutter_network_debugger.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 void main() {
   runApp(const MyApp());
@@ -144,6 +145,31 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void _testSocketIo() {
+    debugPrint('Testing Socket.IO Client...');
+    // Create socket instance
+    final socket = IO.io('https://socketio-chat-h9jt.herokuapp.com/', <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': false,
+    });
+
+    // 1. Attach the monitor
+    socket.monitor(id: 'demo_socket_io');
+
+    socket.connect();
+
+    Future.delayed(const Duration(seconds: 2), () {
+      // 2. Use emitTracked to log outgoing events
+      socket.emitTracked('new message', 'Hello from Flutter Network Debugger!');
+    });
+
+    Future.delayed(const Duration(seconds: 5), () {
+      socket.disconnect();
+      socket.dispose();
+    });
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -161,7 +187,12 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _logSocket,
-              child: const Text('Simulate Socket Event'),
+              child: const Text('Simulate Manual Socket Event'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _testSocketIo,
+              child: const Text('Test Socket.IO Client'),
             ),
           ],
         ),

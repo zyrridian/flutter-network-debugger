@@ -44,4 +44,5 @@ export 'src/ui/monitor_screen.dart';
 export 'src/models/network_call.dart';
 export 'src/interceptors/dio_interceptor.dart';
 export 'src/interceptors/socket_monitor.dart';
+export 'src/interceptors/socket_io_monitor.dart';
 export 'src/core/network_monitor.dart';
