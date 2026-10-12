@@ -301,6 +301,10 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                 return Dismissible(
                   key: ValueKey(call.id),
                   direction: dismissDirection,
+                  dismissThresholds: const {
+                    DismissDirection.endToStart: 0.25,
+                    DismissDirection.startToEnd: 0.25,
+                  },
                   background: widget.enableSwipeToCopy
                       ? Container(
                           color: Colors.blue[700],
