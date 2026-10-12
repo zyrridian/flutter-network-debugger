@@ -10,6 +10,8 @@ It provides a floating action button that attaches to your app's UI, allowing yo
 - 🌐 **HTTP Monitoring**: Integrates easily with `dio` to intercept and log requests.
 - 🔌 **Socket Monitoring**: Exposes a simple logger for WebSocket and TCP socket events.
 - 📱 **In-App Viewer**: See your requests in real-time with a floating button.
+- 🗑️ **Swipe to Delete**: Swipe right-to-left on any request to delete it and declutter your monitor feed (with instant Undo).
+- 📋 **Swipe to Copy cURL**: Swipe left-to-right on any request to quickly copy its cURL command to clipboard.
 - 🔍 **Detailed Inspection**: View request/response headers, bodies, timestamps, and durations.
 - 🔄 **JSON Formatting**: Automatically formats JSON payloads for readability.
 

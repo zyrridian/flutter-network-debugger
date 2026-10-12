@@ -56,7 +56,7 @@ extension SocketIoDebuggerExtension on Socket {
   /// 
   /// Use this instead of [emit] if you want outgoing events to be tracked.
   void emitTracked(String event, [dynamic data]) {
-    final socketId = _socketIds[this] ?? this.id ?? (this.io as dynamic).uri ?? 'socket_io';
+    final socketId = _socketIds[this] ?? id ?? (this.io as dynamic).uri ?? 'socket_io';
     final url = (this.io as dynamic).uri ?? 'unknown_url';
     
     FlutterNetworkSocketMonitor.logSocketEvent(

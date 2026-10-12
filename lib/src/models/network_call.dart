@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Enumeration of supported network call types.
 ///
 /// [http] - HTTP/HTTPS requests
@@ -80,6 +82,30 @@ class NetworkCall {
       'error': error?.toString(),
       'durationMilliseconds': durationMilliseconds,
     };
+  }
+
+  /// Generates a cURL command string for this network call.
+  String toCurl() {
+    final buffer = StringBuffer();
+    buffer.write('curl -X $method "$url"');
+
+    if (requestHeaders != null && requestHeaders is Map) {
+      (requestHeaders as Map).forEach((key, value) {
+        buffer.write(' -H "$key: $value"');
+      });
+    }
+
+    if (requestBody != null) {
+      String body;
+      try {
+        body = requestBody is String ? requestBody : jsonEncode(requestBody);
+      } catch (_) {
+        body = requestBody.toString();
+      }
+      buffer.write(" -d '$body'");
+    }
+
+    return buffer.toString();
   }
 
   /// Duration of the network call in milliseconds.

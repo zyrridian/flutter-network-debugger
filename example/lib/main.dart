@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_network_debugger/flutter_network_debugger.dart';
+// ignore: library_prefixes
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 void main() {

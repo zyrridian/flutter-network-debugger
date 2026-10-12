@@ -25,6 +25,12 @@ class FlutterNetworkDebugger extends StatefulWidget {
   /// If not provided, the widget attempts to use the current context's navigator.
   final GlobalKey<NavigatorState>? navigatorKey;
 
+  /// Whether to allow swipe-to-delete on network calls in the monitor screen.
+  final bool enableSwipeToDelete;
+
+  /// Whether to allow swipe-to-copy cURL on network calls in the monitor screen.
+  final bool enableSwipeToCopy;
+
   /// Creates a [FlutterNetworkDebugger].
   ///
   /// The [child] parameter is required and should typically be your [MaterialApp].
@@ -34,6 +40,8 @@ class FlutterNetworkDebugger extends StatefulWidget {
     required this.child,
     this.isDebug = true,
     this.navigatorKey,
+    this.enableSwipeToDelete = true,
+    this.enableSwipeToCopy = true,
   });
 
   /// Controls the visibility of the debug floating action button.
@@ -86,19 +94,21 @@ class _FlutterNetworkDebuggerState extends State<FlutterNetworkDebugger> {
                         shape: const CircleBorder(),
                         onPressed: () async {
                           FlutterNetworkDebugger.isVisible.value = false;
+                          final monitorScreen = NetworkMonitorScreen(
+                            enableSwipeToDelete: widget.enableSwipeToDelete,
+                            enableSwipeToCopy: widget.enableSwipeToCopy,
+                          );
                           if (widget.navigatorKey != null) {
                             await widget.navigatorKey!.currentState?.push(
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    const NetworkMonitorScreen(),
+                                builder: (context) => monitorScreen,
                               ),
                             );
                           } else {
                             try {
                               await Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const NetworkMonitorScreen(),
+                                  builder: (context) => monitorScreen,
                                 ),
                               );
                             } catch (e) {

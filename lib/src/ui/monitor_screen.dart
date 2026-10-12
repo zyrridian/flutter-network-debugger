@@ -13,9 +13,21 @@ import 'call_details_screen.dart';
 /// * Search functionality to filter calls
 /// * Export to JSON capability
 /// * Tap to view detailed call information
+/// * Swipe right-to-left to delete an API request (with Undo)
+/// * Swipe left-to-right to quickly copy cURL command
 class NetworkMonitorScreen extends StatefulWidget {
+  /// Whether to allow swipe-to-delete on network calls.
+  final bool enableSwipeToDelete;
+
+  /// Whether to allow swipe-to-copy cURL on network calls.
+  final bool enableSwipeToCopy;
+
   /// Creates a [NetworkMonitorScreen].
-  const NetworkMonitorScreen({super.key});
+  const NetworkMonitorScreen({
+    super.key,
+    this.enableSwipeToDelete = true,
+    this.enableSwipeToCopy = true,
+  });
 
   @override
   State<NetworkMonitorScreen> createState() => _NetworkMonitorScreenState();
@@ -167,107 +179,230 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
                   if (uri.hasQuery) endpoint += '?${uri.query}';
                 }
 
-                return InkWell(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => CallDetailsScreen(call: call),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // ROW 1: Method & Base URL
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: methodColor,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      call.method.toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 11,
-                                        letterSpacing: 0.5,
+                final tile = Material(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => CallDetailsScreen(call: call),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // ROW 1: Method & Base URL
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: methodColor,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        call.method.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 11,
+                                          letterSpacing: 0.5,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  if (baseUrl.isNotEmpty) ...[
-                                    const SizedBox(width: 8),
+                                    if (baseUrl.isNotEmpty) ...[
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          baseUrl,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontSize: 12, color: Colors.grey),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                // ROW 2: Endpoint & Status/Duration (stacked)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
                                     Expanded(
                                       child: Text(
-                                        baseUrl,
+                                        endpoint,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                            fontSize: 12, color: Colors.grey),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15),
                                       ),
                                     ),
                                   ],
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${call.statusCode ?? 'PENDING'}',
+                                style: TextStyle(
+                                  color: _getStatusColor(call),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
-                              const SizedBox(height: 8),
-                              // ROW 2: Endpoint & Status/Duration (stacked)
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      endpoint,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15),
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                call.durationMilliseconds > -1
+                                    ? '${call.durationMilliseconds}ms'
+                                    : '...',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 11,
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${call.statusCode ?? 'PENDING'}',
-                              style: TextStyle(
-                                color: _getStatusColor(call),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              call.durationMilliseconds > -1
-                                  ? '${call.durationMilliseconds}ms'
-                                  : '...',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_ios,
-                            size: 16, color: Colors.grey),
-                      ],
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 16, color: Colors.grey),
+                        ],
+                      ),
                     ),
                   ),
+                );
+
+                if (!widget.enableSwipeToDelete && !widget.enableSwipeToCopy) {
+                  return tile;
+                }
+
+                DismissDirection dismissDirection;
+                if (widget.enableSwipeToDelete && widget.enableSwipeToCopy) {
+                  dismissDirection = DismissDirection.horizontal;
+                } else if (widget.enableSwipeToDelete) {
+                  dismissDirection = DismissDirection.endToStart;
+                } else {
+                  dismissDirection = DismissDirection.startToEnd;
+                }
+
+                return Dismissible(
+                  key: ValueKey(call.id),
+                  direction: dismissDirection,
+                  background: widget.enableSwipeToCopy
+                      ? Container(
+                          color: Colors.blue[700],
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.terminal,
+                                  color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'COPY cURL',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                  secondaryBackground: widget.enableSwipeToDelete
+                      ? Container(
+                          color: Colors.red[700],
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'DELETE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Icon(Icons.delete_outline,
+                                  color: Colors.white, size: 20),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                  confirmDismiss: (direction) async {
+                    if (direction == DismissDirection.startToEnd) {
+                      if (widget.enableSwipeToCopy) {
+                        final curl = call.toCurl();
+                        await Clipboard.setData(ClipboardData(text: curl));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Copied cURL: ${call.method.toUpperCase()} $endpoint',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                      return false;
+                    } else if (direction == DismissDirection.endToStart) {
+                      return widget.enableSwipeToDelete;
+                    }
+                    return false;
+                  },
+                  onDismissed: (direction) {
+                    if (direction == DismissDirection.endToStart) {
+                      final originalIndex =
+                          NetworkMonitorCore.instance.calls.value.indexOf(call);
+                      NetworkMonitorCore.instance.removeCall(call.id);
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Deleted: ${call.method.toUpperCase()} $endpoint',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          action: SnackBarAction(
+                            label: 'UNDO',
+                            textColor: Colors.amber,
+                            onPressed: () {
+                              NetworkMonitorCore.instance.insertCall(
+                                originalIndex >= 0 ? originalIndex : 0,
+                                call,
+                              );
+                            },
+                          ),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  },
+                  child: tile,
                 );
               },
             );

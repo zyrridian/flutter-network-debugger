@@ -43,6 +43,23 @@ class NetworkMonitorCore {
     }
   }
 
+  /// Removes a network call by its [id].
+  void removeCall(String id) {
+    final currentCalls = List<NetworkCall>.from(calls.value);
+    currentCalls.removeWhere((c) => c.id == id);
+    calls.value = currentCalls;
+  }
+
+  /// Inserts a network call at the specified [index].
+  ///
+  /// Useful for restoring previously removed calls (e.g., undoing a deletion).
+  void insertCall(int index, NetworkCall call) {
+    final currentCalls = List<NetworkCall>.from(calls.value);
+    final targetIndex = index.clamp(0, currentCalls.length);
+    currentCalls.insert(targetIndex, call);
+    calls.value = currentCalls;
+  }
+
   /// Clears all captured network calls from the monitor.
   void clear() {
     calls.value = [];

@@ -294,24 +294,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
   }
 
   void _copyAsCurl(BuildContext context) {
-    final call = widget.call;
-    final buffer = StringBuffer();
-    buffer.write('curl -X ${call.method} "${call.url}"');
-
-    if (call.requestHeaders != null && call.requestHeaders is Map) {
-      (call.requestHeaders as Map).forEach((key, value) {
-        buffer.write(' -H "$key: $value"');
-      });
-    }
-
-    if (call.requestBody != null) {
-      final body = call.requestBody is String
-          ? call.requestBody
-          : json.encode(call.requestBody);
-      buffer.write(" -d '$body'");
-    }
-
-    _copyToClipboard(context, buffer.toString());
+    _copyToClipboard(context, widget.call.toCurl());
   }
 
   Widget _buildDetailRow(String label, dynamic value, {bool isError = false}) {

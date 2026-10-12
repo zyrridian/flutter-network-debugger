@@ -1,3 +1,11 @@
+## 0.1.1
+
+- Added swipe-to-delete for individual API requests in the monitor screen with instant Undo capability.
+- Added swipe-to-copy cURL command on left-to-right swipe for fast sharing and debugging.
+- Added `removeCall` and `insertCall` methods to `NetworkMonitorCore`.
+- Added `toCurl()` utility method to `NetworkCall`.
+- Added configurable `enableSwipeToDelete` and `enableSwipeToCopy` options.
+
 ## 0.1.0
 
 - Redesigned layout and improved typography.

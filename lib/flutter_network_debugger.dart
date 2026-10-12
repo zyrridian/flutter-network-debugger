@@ -37,7 +37,7 @@
 ///   data: jsonEncode({'message': 'hello'}),
 /// );
 /// ```
-library flutter_network_debugger;
+library;
 
 export 'src/ui/monitor_widget.dart';
 export 'src/ui/monitor_screen.dart';
